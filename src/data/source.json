@@ -1,0 +1,10 @@
+{
+  "page": "https://archeageworld.com/en/crafting.html",
+  "source": "https://archeageworld.com/data/crafteo-data.js",
+  "iconBase": "https://archeageworld.com/img/icons/",
+  "sha256": "7839d2d63129e086ac91556dfc40d169dff2eea2f35650aac8659bd032d4f3b2",
+  "importedAt": "2026-11-08T08:10:08.594Z",
+  "recipes": 355,
+  "items": 414,
+  "icons": 281
+}
