@@ -8,7 +8,7 @@
   import { parseVisualReferences, rememberVisualReference, serializeVisualReferences, SCREENSHOT_REFERENCES_KEY, type VisualReference } from './screenshot-references';
   import type { Catalog, Inventory } from './types';
 
-  let { catalog, inventory, replaceInventory, onImportStart }: { catalog: Catalog; inventory: Inventory; replaceInventory: (next: Inventory) => void; onImportStart: () => void } = $props();
+  let { catalog, inventory, saveImport, onImportStart }: { catalog: Catalog; inventory: Inventory; saveImport: (next: Inventory) => boolean; onImportStart: () => void } = $props();
   type ReviewSlot = RecognizedSlot & ScreenshotReviewState;
   type ReviewPanel = Omit<RecognizedPanel, 'slots'> & { slots: ReviewSlot[]; captureId: string };
   const validIds = $derived(new Set(catalog.items.map(item => item.id)));
@@ -24,9 +24,9 @@
   let notice = $state('');
   let busy = $state(false);
   let reconciling = $state(false);
-  let progress = $state('');
-  let complete = $state(false);
-  let pending: File[] = [];
+  let saveError = $state('');
+  let activeFile = $state<File | null>(null);
+  let pending = $state<File[]>([]);
   let controller: AbortController | null = null;
   let reconciliationController: AbortController | null = null;
   let generation = 0;
@@ -35,7 +35,7 @@
     try { references = parseVisualReferences(localStorage.getItem(SCREENSHOT_REFERENCES_KEY), validIds); }
     catch { cacheAvailable = false; cacheWarning = 'Saved icon corrections could not be loaded. They were preserved; new corrections apply to this session only.'; }
   });
-  onDestroy(() => { generation++; controller?.abort(); reconciliationController?.abort(); });
+  onDestroy(reset);
 
   const slots = $derived(panels.flatMap(panel => panel.slots));
   const sessionReferences = $derived.by(() => {
@@ -55,18 +55,18 @@
     }).sort((a, b) => a.item.name.localeCompare(b.item.name));
   });
   const cleared = $derived(Object.entries(inventory).filter(([id, count]) => count > 0 && !(id in merged.inventory)));
-  const canApply = $derived(captures.length > 0 && !busy && !reconciling && !error && !unassigned.length && !issues.length && !merged.conflicts.length && !merged.unresolved.length && complete);
+  const canApply = $derived(captures.length > 0 && !busy && !reconciling && !error && !unassigned.length && !issues.length && !merged.conflicts.length && !merged.unresolved.length);
 
   function reset() {
-    generation++; controller?.abort(); reconciliationController?.abort(); controller = null; reconciliationController = null; pending = []; busy = false; reconciling = false;
-    panels = []; captures = []; complete = false; error = ''; progress = '';
+    generation++; controller?.abort(); reconciliationController?.abort(); controller = null; reconciliationController = null; pending = []; activeFile = null; busy = false; reconciling = false;
+    panels = []; captures = []; error = ''; saveError = '';
   }
 
   async function addImages(files: File[]) {
     if (!files.length) return;
     onImportStart();
-    notice = ''; error = ''; complete = false;
-    if (captures.length + pending.length + files.length + (busy ? 1 : 0) > 20) { error = 'Import at most 20 screenshots in one batch.'; return; }
+    notice = ''; error = ''; saveError = '';
+    if (captures.length + pending.length + files.length + (activeFile ? 1 : 0) > 20) { error = 'Import at most 20 screenshots in one batch.'; return; }
     pending.push(...files);
     if (busy) return;
     busy = true;
@@ -74,7 +74,7 @@
     controller = new AbortController();
     while (pending.length && run === generation) {
       const file = pending.shift()!;
-      progress = `Reading ${file.name || 'pasted image'}…`;
+      activeFile = file;
       try {
         const currentSessionReferences = sessionReferences;
         const sessionIds = new Set(currentSessionReferences.map(reference => reference.itemId));
@@ -83,13 +83,15 @@
         const captureId = crypto.randomUUID();
         captures = [...captures, { id: captureId, name: file.name || 'Pasted image', warnings: result.warnings }];
         panels = [...panels, ...result.panels.map(panel => ({ ...panel, id: `${captureId}:${panel.id}`, captureId, slots: panel.slots.map(slot => ({ ...slot, id: `${captureId}:${slot.id}`, panelId: `${captureId}:${panel.id}`, dismissed: false, reviewed: !slot.needsReview, corrected: false, sessionMatched: slot.itemId !== null && sessionIds.has(slot.itemId) })) }))];
+        activeFile = null;
         await reconcileBatch();
       } catch (cause) {
         if (run !== generation) return;
         error = cause instanceof Error ? `${file.name || 'Image'}: ${cause.message}` : 'Could not read this image.';
       }
+      if (run === generation) activeFile = null;
     }
-    if (run === generation) { busy = false; progress = ''; controller = null; }
+    if (run === generation) { busy = false; controller = null; }
   }
 
   function paste(event: ClipboardEvent) {
@@ -101,7 +103,6 @@
     void addImages([...(event.dataTransfer?.files ?? [])]);
   }
   function updateSlot(id: string, update: Partial<ReviewSlot>) {
-    complete = false;
     panels = panels.map(panel => ({ ...panel, slots: panel.slots.map(slot => slot.id === id ? { ...slot, ...update } : slot) }));
   }
   async function reconcileBatch() {
@@ -110,7 +111,6 @@
     reconciliationController = current;
     const run = generation;
     const confirmed = sessionReferences;
-    complete = false;
     if (!confirmed.length) {
       panels = panels.map(panel => ({ ...panel, slots: applySessionReconciliation(panel.slots, new Map<string, string>()) }));
       reconciling = false; reconciliationController = null; return;
@@ -146,11 +146,10 @@
   function setCount(id: string, container: 'bag' | 'storage', event: Event) {
     const input = event.currentTarget as HTMLInputElement;
     const count = input.value === '' ? null : input.valueAsNumber;
-    complete = false;
     panels = panels.map(panel => panel.container !== container ? panel : ({ ...panel, slots: panel.slots.map(slot => slot.itemId === id && !slot.dismissed ? { ...slot, count, countUncertain: false } : slot) }));
   }
   function removeCapture(id: string) {
-    complete = false; captures = captures.filter(capture => capture.id !== id); panels = panels.filter(panel => panel.captureId !== id);
+    captures = captures.filter(capture => capture.id !== id); panels = panels.filter(panel => panel.captureId !== id);
     void reconcileBatch();
   }
   function forgetReferences() {
@@ -163,6 +162,17 @@
     if (!canApply) return;
     // Validate once more at the mutation boundary; no partial result is authoritative.
     if (merged.unresolved.length || merged.conflicts.length || unassigned.length || issues.length) return;
+    saveError = '';
+    try {
+      if (!saveImport({ ...merged.inventory })) {
+        saveError = 'Inventory could not be saved. Your screenshots and review are preserved. Retry when ready.';
+        return;
+      }
+    } catch {
+      saveError = 'Inventory could not be saved. Your screenshots and review are preserved. Retry when ready.';
+      return;
+    }
+    const count = Object.keys(merged.inventory).length;
     let nextReferences = references;
     try {
       for (const slot of slots) if (!slot.dismissed && slot.corrected && slot.itemId) nextReferences = rememberVisualReference(nextReferences, { itemId: slot.itemId, vector: slot.vector, thumbnail: slot.thumbnail });
@@ -170,11 +180,9 @@
       references = nextReferences;
       if (cacheAvailable) localStorage.setItem(SCREENSHOT_REFERENCES_KEY, serialized);
     } catch {
-      cacheAvailable = false; cacheWarning = 'Icon corrections could not be saved. They apply to this session only; saved stock uses its normal storage settings.';
+      cacheAvailable = false; cacheWarning = 'Plan saved, but icon corrections could not be saved. They apply to this session only.';
     }
-    replaceInventory({ ...merged.inventory });
-    const count = Object.keys(merged.inventory).length;
-    reset(); notice = `Inventory replaced with ${format.format(count)} catalog items.`;
+    reset(); notice = `Inventory overwritten with ${format.format(count)} catalog items. Plan saved.`;
   }
 </script>
 
@@ -187,10 +195,12 @@
     <button type="button" onclick={() => fileInput.click()}>Choose images</button>
     <input bind:this={fileInput} class="file-input" type="file" accept="image/png,image/jpeg,image/webp" multiple aria-label="Choose inventory screenshots" onchange={event => { void addImages([...(event.currentTarget.files ?? [])]); event.currentTarget.value = ''; }} />
   </div>
-  <p class="hint">Include Bag and Storage. Crops and scrolled views are supported; clipped rows are skipped. Use one unchanged inventory session.</p>
-  {#if busy}<p role="status">{progress} Paste more images to queue them.</p>{/if}
-  {#if reconciling}<p role="status">Checking matching items in this batch…</p>{/if}
-  {#if error}<div class="import-error"><p class="warning" role="alert">{error}</p><button type="button" onclick={() => { error = ''; complete = false; }}>Dismiss error</button></div>{/if}
+  <p class="hint">Choose <strong>Crafting Material</strong>. Capture Bag and Storage; add scrolled views without moving items. Crops are supported; clipped rows are skipped.</p>
+  {#if busy || reconciling}
+    <div class="processing" role="status" aria-live="polite"><span class="processing-spinner" aria-hidden="true"></span><span>{reconciling ? 'Checking matching items in this batch…' : `Reading ${activeFile?.name || 'pasted image'}…`}</span><span class="queue-count">{pending.length} queued</span></div>
+  {/if}
+  <details class="screenshot-example"><summary>Screenshot example</summary><a href={`${import.meta.env.BASE_URL}examples/inventory-crafting-materials.webp`} target="_blank" rel="noreferrer"><img src={`${import.meta.env.BASE_URL}examples/inventory-crafting-materials.webp`} alt="Bag and Storage with the Crafting Material filter selected" loading="lazy" /></a></details>
+  {#if error}<div class="import-error"><p class="warning" role="alert">{error}</p><button type="button" onclick={() => { error = ''; }}>Dismiss error</button></div>{/if}
   {#if cacheWarning}<p class="warning" role="status">{cacheWarning}</p>{/if}
   {#if references.length || cacheWarning}<button type="button" class="text-button forget-icons" onclick={forgetReferences}>Forget learned icons</button>{/if}
   {#if notice}<p role="status">{notice}</p>{/if}
@@ -207,7 +217,7 @@
         <label class="panel-choice">
           {#if panel.slots[0]}<img src={panel.slots[0].thumbnail} alt="First item in this detected panel" />{/if}
           <span>{panel.slots[0]?.imageName ?? 'Cropped panel'}
-            <select aria-label={`Inventory side for ${panel.id}`} value={panel.container ?? ''} onchange={event => { complete = false; panels = panels.map(entry => entry.id === panel.id ? { ...entry, container: event.currentTarget.value === 'bag' ? 'bag' : event.currentTarget.value === 'storage' ? 'storage' : null } : entry); }}>
+            <select aria-label={`Inventory side for ${panel.id}`} value={panel.container ?? ''} onchange={event => { panels = panels.map(entry => entry.id === panel.id ? { ...entry, container: event.currentTarget.value === 'bag' ? 'bag' : event.currentTarget.value === 'storage' ? 'storage' : null } : entry); }}>
               <option value="">Choose Bag or Storage</option><option value="bag">Bag</option><option value="storage">Storage</option>
             </select>
           </span>
@@ -230,7 +240,7 @@
         {/each}
       </div>
     {/if}
-    {#if slots.some(slot => slot.dismissed)}<p class="hint">Dismissed {slots.filter(slot => slot.dismissed).length} sightings. <button type="button" class="text-button" onclick={() => { complete = false; panels = panels.map(panel => ({ ...panel, slots: panel.slots.map(slot => ({ ...slot, dismissed: false })) })); void reconcileBatch(); }}>Restore dismissed</button></p>{/if}
+    {#if slots.some(slot => slot.dismissed)}<p class="hint">Dismissed {slots.filter(slot => slot.dismissed).length} sightings. <button type="button" class="text-button" onclick={() => { panels = panels.map(panel => ({ ...panel, slots: panel.slots.map(slot => ({ ...slot, dismissed: false })) })); void reconcileBatch(); }}>Restore dismissed</button></p>{/if}
     {#if merged.conflicts.length}<p class="warning" role="alert">Conflicting counts found. Edit the affected Bag or Storage count below, or remove screenshots from a different inventory session.</p>{/if}
     {#if merged.unresolved.some(issue => issue.reason === 'total-overflow')}<p class="warning" role="alert">A combined quantity is too large. Correct the counts before replacing inventory.</p>{/if}
     {#if groups.length}
@@ -252,8 +262,8 @@
     <div class="apply-area">
       <p class="warning">This replaces the entire inventory. Items absent from these screenshots will be cleared.</p>
       {#if !Object.keys(merged.inventory).length && !issues.length && !unassigned.length && !merged.conflicts.length}<p class="warning">No catalog stock remains in this import. Applying it clears all recorded inventory.</p>{/if}
-      <label class="complete-check"><input type="checkbox" bind:checked={complete} disabled={busy || reconciling} /> These screenshots cover my complete inventory, with no items moved between captures. I checked the detected items, quantities, and Bag / Storage assignments.</label>
-      <div class="apply-actions"><button type="button" class="replace" disabled={!canApply} onclick={apply}>{Object.keys(merged.inventory).length ? 'Replace inventory' : 'Clear inventory'}</button><button type="button" onclick={reset}>Cancel import</button></div>
+      {#if saveError}<p class="warning" role="alert">{saveError}</p>{/if}
+      <div class="apply-actions"><button type="button" class="replace" disabled={!canApply} onclick={apply}>{saveError ? 'Retry save' : 'Overwrite and save'}</button><button type="button" onclick={reset}>Cancel import</button></div>
       {#if issues.length || unassigned.length}<p class="hint">Resolve or dismiss the remaining items and choose each panel’s side before applying.</p>{/if}
     </div>
   {:else if busy}<button type="button" onclick={reset}>Cancel import</button>{/if}
@@ -269,6 +279,13 @@
   kbd { font: inherit; color: #e1cfaa; }
   button { font: inherit; font-size: 12px; padding: 8px 10px; background: #302b20; border: 1px solid #75613e; color: #e3d2ad; } button:hover:not(:disabled) { background: #423824; } .file-input { display: none; }
   .import-error { display: grid; gap: 6px; justify-items: start; }
+  .processing { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 10px 12px; border-left: 2px solid #d1b97c; background: #2a251b; font-size: 12px; color: #dec68f; }
+  .processing > span:nth-child(2) { overflow-wrap: anywhere; min-width: 0; }
+  .queue-count { margin-left: auto; white-space: nowrap; color: #b3a991; }
+  .processing-spinner { width: 16px; height: 16px; flex: none; border: 2px solid #554a34; border-top-color: #dec68f; border-radius: 50%; animation: processing-spin 1.4s steps(8, end) infinite; }
+  @keyframes processing-spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .processing-spinner { animation: none; } }
+  .screenshot-example img { display: block; max-width: 100%; height: auto; margin-top: 10px; }
   .captures { display: grid; gap: 7px; } .captures > div { display: flex; gap: 12px; align-items: center; justify-content: space-between; min-width: 0; } .captures span { overflow-wrap: anywhere; font-size: 12px; } .captures button { padding: 4px 8px; }
   .panel-choice { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 8px; align-items: center; font-size: 11px; color: #cfc4ab; padding-top: 10px; } .panel-choice img { width: 48px; height: 48px; } .panel-choice > span { overflow-wrap: anywhere; } .panel-choice select { margin-top: 5px; } select { min-width: 0; max-width: 100%; width: 100%; }
   .review-issues { display: grid; gap: 8px; max-height: 430px; overflow-y: auto; }
@@ -277,6 +294,6 @@
   .combined-scroll { overflow: auto; max-height: 480px; } table { border-collapse: collapse; width: 100%; font-size: 12px; } th, td { padding: 9px 6px; border-bottom: 1px solid #453e30; text-align: left; } thead { color: #b3a991; } thead th { position: sticky; top: 0; background: #23221b; z-index: 1; font-weight: normal; } tbody th { font-weight: normal; min-width: 145px; } td { width: 82px; } td input { width: 78px; padding: 7px 4px; } td > small { display: block; } .item-name { display: flex; gap: 8px; align-items: center; } .item-name small { display: block; font-size: 10px; } .total { color: #efdab0; font-variant-numeric: tabular-nums; } .conflict { background: #56351c35; }
   .slot-evidence { font-size: 10px; color: #b3a991; margin-top: 5px; } .slot-evidence > div { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 7px; } .slot-evidence figure { margin: 0; } .slot-evidence img { display: block; width: 64px; height: 64px; } .slot-evidence figcaption { font-size: 10px; text-align: center; } .slot-evidence button { font-size: 10px; padding: 3px 5px; margin-top: 3px; } .forget-icons { justify-self: start; }
   details { font-size: 12px; color: #ebbd7b; } summary { cursor: pointer; } li { margin-top: 5px; }
-  .apply-area { display: grid; gap: 12px; border-top: 1px solid #554a34; padding-top: 14px; } .complete-check { display: flex; gap: 9px; align-items: flex-start; font-size: 12px; line-height: 1.6; } .complete-check input { margin-top: 4px; flex: none; } .apply-actions { display: flex; gap: 10px; flex-wrap: wrap; } .replace { border-color: #b39658; background: #3b301d; color: #edd4a0; } button:disabled { opacity: .45; cursor: not-allowed; } .text-button { background: none; border: 0; padding: 0; text-decoration: underline; color: #dfc48c; }
+  .apply-area { display: grid; gap: 12px; border-top: 1px solid #554a34; padding-top: 14px; } .apply-actions { display: flex; gap: 10px; flex-wrap: wrap; } .replace { border-color: #b39658; background: #3b301d; color: #edd4a0; } button:disabled { opacity: .45; cursor: not-allowed; } .text-button { background: none; border: 0; padding: 0; text-decoration: underline; color: #dfc48c; }
   @media (max-width: 600px) { .screenshot-import { padding: 12px; } .paste-area { flex-direction: column; align-items: stretch; padding: 12px; } .issue { grid-template-columns: 52px minmax(0, 1fr); padding: 8px; } .issue > img { width: 52px; height: 52px; } .issue-actions { grid-column: 2; display: flex; } table { font-size: 11px; } th, td { padding: 8px 4px; } table, tbody { display: block; } thead { position: absolute; clip-path: inset(50%); width: 1px; height: 1px; overflow: hidden; } tbody tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; border-bottom: 1px solid #453e30; padding: 10px 0; } tbody th { grid-column: 1 / -1; min-width: 0; border: 0; padding: 0; } td { width: auto; border: 0; padding: 0; } td::before { display: block; color: #b3a991; font-size: 10px; margin-bottom: 4px; } td:first-of-type::before { content: 'Bag'; } td:nth-of-type(2)::before { content: 'Storage'; } td.total::before { content: 'On hand'; } td input { width: 100%; } .item-name { gap: 5px; } }
 </style>

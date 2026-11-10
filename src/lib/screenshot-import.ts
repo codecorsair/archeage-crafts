@@ -44,7 +44,7 @@ export type ScreenshotMergeResult = {
 /**
  * Merge one unchanged session, deduplicating each item's stack within each container.
  * The inventory is a replacement preview, never an increment. Callers must block apply
- * while conflicts/unresolved remain and separately confirm empty/destructive replacement.
+ * while conflicts/unresolved remain and make replacement explicit at the overwrite-and-save boundary.
  * Malformed observation structure or duplicate observation IDs throws; recognition
  * uncertainties remain actionable unresolved entries. Dismissal explicitly excludes a slot.
  */

@@ -59,6 +59,9 @@ legend { padding: 0 5px; color: var(--muted); font-size: 12px; }
 .phase-title h2 { font-size: 19px; }
 .phase-note { font-size: 11px; color: var(--muted); line-height: 1.7; margin-bottom: 15px; }
 .phase > button { margin-top: 12px; }
+.trade-actions-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 9px; }
+.trade-actions-bar > button { padding: 8px; font-size: 11px; }
+.preset-note { margin-bottom: 15px; }
 .preparation { margin-bottom: 20px; }
 .gathering-group { display: grid; grid-template-columns: 160px minmax(0, 1fr); align-items: start; gap: 16px; padding: 12px 0; border-top: 1px solid var(--line); }
 .gathering-group > h3 { margin-top: 18px; font-size: 11px; font-weight: 500; color: var(--muted); }

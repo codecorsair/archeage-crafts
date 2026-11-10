@@ -7,11 +7,11 @@
     catalog: Catalog;
     inventory: Inventory;
     setStock: (id: string, event: Event) => void;
-    replaceInventory: (next: Inventory) => void;
+    saveImport: (next: Inventory) => boolean;
     onImportStart: () => void;
   };
 
-  let { catalog, inventory, setStock, replaceInventory, onImportStart }: Props = $props();
+  let { catalog, inventory, setStock, saveImport, onImportStart }: Props = $props();
   let query = $state('');
   let editingId = $state<string | null>(null);
 
@@ -28,10 +28,9 @@
 
 <section aria-label="Plan inventory" class="inventory">
   <div class="intro">
-    <h2>Inventory</h2>
-    <p>Stock for this plan only. Save changes to keep your edits.</p>
+    <p>Manual edits need Save changes. Screenshot imports overwrite and save the whole plan.</p>
   </div>
-  <ScreenshotImporter {catalog} {inventory} {replaceInventory} {onImportStart} />
+  <ScreenshotImporter {catalog} {inventory} {saveImport} {onImportStart} />
   <label for="inventory-search">Search items</label>
   <input id="inventory-search" type="search" placeholder="Find any catalog item…" bind:value={query} />
   {#if query.trim() && results.length > 100}<p class="hint">Showing the first 100 matches. Refine your search.</p>{/if}
@@ -64,7 +63,6 @@
 
 <style>
   .inventory { display: grid; gap: 14px; min-width: 0; }
-  .intro h2 { margin: 0 0 6px; color: #dec68f; font: 22px Georgia, serif; }
   .intro p, .hint, .empty { margin: 0; color: #b3a991; font-size: 12px; line-height: 1.6; }
   .inventory > label { color: #b3a991; font-size: 12px; }
   .inventory > input { width: 100%; }

@@ -16,6 +16,7 @@
   import { attachTradePlan, createPlan, projectPlanInventory, toggleCraftComplete, toggleGatheringComplete, toggleRunComplete, updatePlanInputs, type CraftPlan } from './lib/plans';
   import { LEGACY_STATE_KEYS, parseWorkbenchState, WORKBENCH_STATE_KEY } from './lib/workbench-state';
   import { planTrades, type TradeCatalog, type TradePlan } from './lib/trading';
+  import { buildFineArcheumPreset } from './lib/trade-presets';
   import type { Catalog, Inventory } from './lib/types';
 
   const catalog: Catalog = data;
@@ -36,7 +37,7 @@
   let drawer = $state<'target' | 'inventory' | 'master' | 'trades' | null>(null);
   let mobileSetupOpen = $state(false);
   type Navigation = { kind: 'new' } | { kind: 'switch'; id: string };
-  type Modal = { kind: 'navigate'; next: Navigation } | { kind: 'delete' } | { kind: 'remove-trades' } | { kind: 'rebuild'; plan: TradePlan; data: TradeCatalog };
+  type Modal = { kind: 'navigate'; next: Navigation } | { kind: 'delete' } | { kind: 'remove-trades' } | { kind: 'rebuild'; plan: TradePlan; data: TradeCatalog } | { kind: 'preset'; candidate: CraftPlan };
   let modal = $state<Modal | null>(null);
   let dialog = $state<HTMLDialogElement | undefined>(undefined);
   let drawerDialog = $state<HTMLDialogElement | undefined>(undefined);
@@ -146,8 +147,15 @@
     changeInputs({ inventory: { ...draft.inventory, [id]: value } });
   }
 
-  function replaceInventory(inventory: Inventory) {
-    changeInputs({ inventory: parseInventory(JSON.stringify(inventory), new Set(items.keys())) });
+  function saveImportedInventory(inventory: Inventory): boolean {
+    if (!draft) return false;
+    try {
+      const candidate = updatePlanInputs($state.snapshot(draft), { inventory: parseInventory(JSON.stringify(inventory), new Set(items.keys())) });
+      return saveCandidate(candidate);
+    } catch (cause) {
+      error = `Not saved. ${cause instanceof Error ? cause.message : 'Could not save imported inventory.'}`;
+      return false;
+    }
   }
 
   function persist(next: CraftPlan[]): boolean {
@@ -168,15 +176,34 @@
     }
   }
 
-  function save(): boolean {
-    if (!draft) return false;
-    const candidate = { ...$state.snapshot(draft), updatedAt: Date.now() };
+  function saveCandidate(plan: CraftPlan): boolean {
+    const candidate = { ...plan, updatedAt: Date.now() };
     const next = plans.some(plan => plan.id === candidate.id)
       ? plans.map(plan => plan.id === candidate.id ? candidate : plan)
       : [...plans, candidate];
     if (!persist(next)) return false;
     draft = structuredClone($state.snapshot(plans.find(plan => plan.id === candidate.id)!));
     return true;
+  }
+
+  function save(): boolean {
+    if (!draft) return false;
+    return saveCandidate($state.snapshot(draft));
+  }
+
+  function applyTradePreset(includeConflict: boolean) {
+    if (!draft) return;
+    try {
+      const candidate = buildFineArcheumPreset(catalog, $state.snapshot(draft), includeConflict);
+      if (draft.completedGathering.length || draft.completedCrafts.length || draft.trade?.completedRuns.length) {
+        modal = { kind: 'preset', candidate };
+      } else {
+        draft = candidate;
+      }
+      error = '';
+    } catch (cause) {
+      error = cause instanceof Error ? cause.message : 'Could not build this trade preset.';
+    }
   }
 
   function reviewTrades() {
@@ -195,6 +222,9 @@
     if (!modal || !draft) return;
     if (modal.kind === 'rebuild') {
       draft = attachTradePlan($state.snapshot(draft), $state.snapshot(modal.plan), $state.snapshot(modal.data));
+      drawer = null;
+    } else if (modal.kind === 'preset') {
+      draft = $state.snapshot(modal.candidate);
       drawer = null;
     } else if (modal.kind === 'remove-trades') {
       draft = { ...draft, trade: null, completedGathering: [], completedCrafts: [] };
@@ -288,6 +318,12 @@
       <div class="phase-board">
         <section class="panel phase" aria-labelledby="trade-heading">
           <div class="phase-title"><span>2</span><h2 id="trade-heading">Trade runs</h2></div>
+          <div class="trade-actions-bar">
+            <button type="button" onclick={() => drawer = 'trades'}>Configure trade runs</button>
+            <button type="button" onclick={() => applyTradePreset(false)}>Fine Archeum · PvE</button>
+            <button type="button" onclick={() => applyTradePreset(true)}>Fine Archeum · PvE + PvP</button>
+          </div>
+          <p class="note preset-note">Presets enable Pioneer access.</p>
           {#if draft.trade?.stale}
             <p class="notice">These runs are outdated. Their rewards are paused until rebuilt.</p>
             <button type="button" class="primary" onclick={reviewTrades}>Review rebuild</button>
@@ -299,7 +335,6 @@
             {:else}<p class="note">No trade runs needed with this configuration.</p>{/if}
           {:else}
             <p class="note">No trade runs configured.</p>
-            <button type="button" onclick={() => drawer = 'trades'}>Configure trade runs</button>
           {/if}
         </section>
         <section class="panel phase" aria-labelledby="materials-heading">
@@ -320,13 +355,13 @@
 <dialog class="setup-drawer" bind:this={drawerDialog} aria-label="Plan configuration" oncancel={event => { event.preventDefault(); drawer = null; }}>
   {#if draft && drawer}
       <div class="drawer-heading"><h2>{({ target: 'Target & name', inventory: 'Plan inventory', master: 'Master professions', trades: 'Trade setup' })[drawer]}</h2><button type="button" onclick={() => drawer = null}>Done</button></div>
-      <p class="note drawer-note">For this plan only. Edits are kept when you Save changes.</p>
+      <p class="note drawer-note">For this plan only.{#if drawer !== 'inventory'} Edits are kept when you Save changes.{/if}</p>
       {#if drawer === 'target'}
         <label for="plan-name">Plan name<input id="plan-name" value={draft.name} oninput={event => { if (draft) draft = { ...draft, name: event.currentTarget.value }; }} /></label>
         <CatalogItemPicker id="plan-target" items={targetItems} selectedId={target?.itemId ?? null} onSelect={id => { const recipe = targetRecipes.get(id); if (recipe) changeInputs({ recipeId: recipe.id }); }} label="Target item" />
         <label for="plan-quantity">Quantity<input id="plan-quantity" type="number" min="1" step="1" value={draft.quantity} oninput={changeQuantity} /></label>
       {:else if drawer === 'inventory'}
-        {#key draft.id}<InventoryPanel {catalog} inventory={draft.inventory} {setStock} {replaceInventory} onImportStart={() => drawer = 'inventory'} />{/key}
+        {#key draft.id}<InventoryPanel {catalog} inventory={draft.inventory} {setStock} saveImport={saveImportedInventory} onImportStart={() => drawer = 'inventory'} />{/key}
       {:else if drawer === 'master'}
         <p class="note">Use owned rare ingredients before basic materials in the professions you enable. Direct rare-ingredient needs are reserved first. Master is not currently attainable in game, so every profession starts off.</p>
         <fieldset><legend>Master unlocks</legend>{#each PROFESSIONS as profession}<label class="toggle"><input type="checkbox" checked={draft.settings.master[profession]} onchange={event => { if (draft) changeInputs({ settings: { ...draft.settings, master: { ...draft.settings.master, [profession]: event.currentTarget.checked } } }); }} />{profession}</label>{/each}</fieldset>
@@ -347,6 +382,11 @@
     <TradeRunGuide {catalog} tradeData={modal.data} plan={modal.plan} disabled />
     {#if !modal.plan.runs.length}<p class="note">No runs can improve this plan with the current stock, access and farming selections.</p>{/if}
     <div class="button-row"><button class="primary" onclick={acceptModal}>Use these runs</button><button onclick={() => modal = null}>Cancel</button></div>
+  {:else if modal?.kind === 'preset'}
+    <h2 id="confirmation-title">Apply Fine Archeum preset?</h2>
+    <p>Farm Fine Archeum with {modal.candidate.settings.includeConflict ? 'PvE + PvP' : 'PvE only'}. Pioneer access will be enabled.</p>
+    <p class="notice">Existing gathering, trade and craft completion will be cleared. Your inventory is unchanged.</p>
+    <div class="button-row"><button class="primary" onclick={acceptModal}>Apply preset</button><button onclick={() => modal = null}>Cancel</button></div>
   {:else if modal?.kind === 'remove-trades'}
     <h2 id="confirmation-title">Remove trade runs?</h2><p>Crafting will use this plan's inventory only. Execution progress will be cleared.</p><div class="button-row"><button class="primary" onclick={acceptModal}>Remove runs</button><button onclick={() => modal = null}>Cancel</button></div>
   {:else if modal?.kind === 'delete'}
