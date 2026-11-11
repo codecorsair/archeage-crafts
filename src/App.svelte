@@ -336,6 +336,7 @@
             <button type="button" onclick={() => drawer = 'trades'}>Configure trade runs</button>
             <button type="button" onclick={() => applyTradePreset(false)}>Fine Archeum · PvE</button>
             <button type="button" onclick={() => applyTradePreset(true)}>Fine Archeum · PvE + PvP</button>
+            {#if draft.trade}<button type="button" onclick={() => modal = { kind: 'remove-trades' }}>Remove trade runs</button>{/if}
           </div>
           <p class="note preset-note">Presets enable Pioneer access.</p>
           {#if draft.trade?.stale}
