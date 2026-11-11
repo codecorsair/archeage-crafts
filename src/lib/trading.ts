@@ -208,7 +208,7 @@ export function planTrades(
     stock = best.stock;
     remaining = best.remaining;
     pickups.push(best.pickup);
-    chargeCounts[best.pickup.channel] += 1;
+    chargeCounts[best.pickup.channel] = sum(chargeCounts[best.pickup.channel], 1);
     for (const input of best.inputs) {
       const previous = inputs.get(input.itemId) ?? { itemId: input.itemId, required: 0, owned: 0, farm: 0 };
       inputs.set(input.itemId, { itemId: input.itemId, required: sum(previous.required, input.required), owned: sum(previous.owned, input.owned), farm: sum(previous.farm, input.farm) });
@@ -246,7 +246,8 @@ export function planTrades(
   chargeCounts.pve = initialCharges('pve');
   chargeCounts.conflict = initialCharges('conflict');
   for (const carts of grouped.values()) for (const cart of carts) {
-    cart.day = Math.floor(chargeCounts[cart.channel]++ / 3) + 1;
+    cart.day = Math.floor(chargeCounts[cart.channel] / 3) + 1;
+    chargeCounts[cart.channel] = sum(chargeCounts[cart.channel], 1);
     pickups.push(cart);
   }
   pickups.sort((left, right) => left.day - right.day);

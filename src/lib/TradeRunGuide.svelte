@@ -22,9 +22,9 @@
 
   function changeExtra(runIndex: number, loadIndex: number, previous: number, event: Event) {
     const input = event.currentTarget as HTMLInputElement;
-    // Replacing a number briefly empties the field; clear the bonus only on blur.
+    // Replacing a number briefly empties the field; only a valid blank clears on blur.
     if (input.value === '' && event.type === 'input') return;
-    const amount = input.value === '' ? 0 : input.valueAsNumber;
+    const amount = input.value === '' && !input.validity.badInput ? 0 : input.valueAsNumber;
     if (onBonusChange?.(runIndex, loadIndex, amount) === false) input.value = String(previous);
   }
 </script>

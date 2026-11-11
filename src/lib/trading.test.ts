@@ -334,10 +334,12 @@ describe('protected trade continuations', () => {
   });
   test('rejects overflow when a protected day seeds channel budgets', () => {
     const original = plan({}, new Set(['stone']));
-    const run = { ...original.runs[0], day: Number.MAX_SAFE_INTEGER };
-    expect(() => planTrades(catalog, network(), 'tool', 2, {}, new Set(['stone']), {
-      continuation: { runs: [run], inputs: original.inputs, bonusRewards: [] },
-    })).toThrow('safe integer');
+    for (const day of [Number.MAX_SAFE_INTEGER, Math.floor(Number.MAX_SAFE_INTEGER / 3) + 1]) {
+      const run = { ...original.runs[0], day };
+      expect(() => planTrades(catalog, network(), 'tool', 2, {}, new Set(['stone']), {
+        continuation: { runs: [run], inputs: original.inputs, bonusRewards: [] },
+      })).toThrow('safe integer');
+    }
   });
   test('prefix packs count toward the 10000 limit', () => {
     const run = plan({}, new Set(['stone'])).runs[0];
