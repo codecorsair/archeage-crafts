@@ -7,11 +7,12 @@
     catalog: Catalog;
     tradeData: TradeCatalog;
     selected: string[];
+    allowed?: ReadonlySet<string>;
     onChange: (ids: string[]) => void;
     disabled?: boolean;
   };
 
-  let { catalog, tradeData, selected, onChange, disabled = false }: Props = $props();
+  let { catalog, tradeData, selected, allowed, onChange, disabled = false }: Props = $props();
   let query = $state('');
   let open = $state(false);
   let active = $state(0);
@@ -19,7 +20,7 @@
   const items = $derived(new Map(catalog.items.map((item) => [item.id, item])));
   const options = $derived(
     [...new Set(tradeData.packs.flatMap((pack) => pack.materials.map((row) => row.itemId)))]
-      .filter((id) => !selected.includes(id))
+      .filter((id) => !selected.includes(id) && (!allowed || allowed.has(id)))
       .map((id) => items.get(id))
       .filter((item) => item !== undefined)
       .filter((item) => item.name.toLowerCase().includes(query.toLowerCase()))

@@ -32,6 +32,10 @@ const materials = assignments.flatMap((post) => [
 
 export type TradeAccess = { pioneer: boolean; senior: boolean };
 
+export const droppedTradeMaterialIds: ReadonlySet<string> = new Set(materials
+  .filter(material => material.family === 'boss')
+  .map(material => material.itemId));
+
 export function availableTradeData(access: TradeAccess): TradeCatalog {
   const availableItems = new Set(materials
     .filter((material) => material.family === 'boss' || material.group === 'Standard'

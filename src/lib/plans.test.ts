@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { attachTradePlan, createPlan, MAX_PLANS_CHARS, parsePlans, projectPlanStock, setTradeBonus, toggleCraftComplete, toggleGatheringComplete, toggleRunComplete, updatePlanInputs, type CraftPlan } from './plans';
+import { attachTradePlan, createPlan, MAX_PLANS_CHARS, parsePlans, projectPlanStock, setTradeBonus, toggleRunComplete, updatePlanInputs, type CraftPlan } from './plans';
 import type { Catalog } from './types';
 import { planTrades, type TradeCatalog, type TradePlan } from './trading';
 import realCatalog from '../data/catalog.json';
@@ -36,19 +36,18 @@ describe('plan-local state', () => {
     expect(() => createPlan(catalog, 'missing')).toThrow();
     expect(() => createPlan(catalog, 'sword', { quantity: 0 })).toThrow();
   });
-  test('progress is immutable checklist-only and never changes projection or timestamps', () => {
-    const plan = built(), checked = toggleCraftComplete(toggleRunComplete(plan, 0), 'wood:6:ordinary');
+  test('run progress is immutable and never changes projection or timestamps', () => {
+    const plan = built(), checked = toggleRunComplete(plan, 0);
     expect(plan.trade!.completedRuns).toEqual([]); expect(checked.trade!.completedRuns).toEqual([0]);
     expect(checked.inventory).toEqual({ ore: 2 }); expect(checked.trade!.stale).toBe(false);
     expect(projectPlanStock(checked).craft).toEqual({ ore: 0, wood: 6 }); expect(checked.updatedAt).toBe(100);
     expect(toggleRunComplete(checked, 0).trade!.completedRuns).toEqual([]);
-    expect(toggleCraftComplete(checked, 'wood:6:ordinary').completedCrafts).toEqual([]);
     expect(() => toggleRunComplete(plan, 1)).toThrow();
   });
-  test('gathering progress is independent, immutable and saved without changing stock or projection', () => {
+  test('legacy gathering marks round trip without changing stock or projection', () => {
     const plan = built();
     const before = structuredClone(plan);
-    const checked = toggleGatheringComplete(plan, '["gather","ore",3]');
+    const checked = { ...plan, completedGathering: ['["gather","ore",3]'] };
     expect(checked.completedGathering).toEqual(['["gather","ore",3]']);
     expect(checked.inventory).toEqual(plan.inventory);
     expect(checked.completedCrafts).toEqual([]);
@@ -56,15 +55,14 @@ describe('plan-local state', () => {
     expect(projectPlanStock(checked).craft).toEqual(projectPlanStock(plan).craft);
     expect(checked.updatedAt).toBe(plan.updatedAt);
     expect(parse([checked])).toEqual([checked]);
-    expect(toggleGatheringComplete(checked, '["gather","ore",3]').completedGathering).toEqual([]);
     expect(plan).toEqual(before);
   });
-  test('edits retain historical instructions and keys but pause projected rewards', () => {
-    const plan = toggleCraftComplete(toggleRunComplete(built(), 0), 'wood:6:ordinary');
+  test('edits retain historical instructions but clear task work and pause projected rewards', () => {
+    const plan = { ...toggleRunComplete(built(), 0), completedCrafts: ['wood:6:ordinary'] };
     for (const patch of [{ inventory: { ore: 7 } }, { quantity: 2 }, { recipeId: 'swords' }, { settings: { includeConflict: true } }]) {
       const edited = updatePlanInputs(plan, patch);
       expect(edited.trade!.stale).toBe(true); expect(edited.trade!.completedRuns).toEqual([0]);
-      expect(edited.completedCrafts).toEqual(['wood:6:ordinary']); expect(edited.trade!.plan).toEqual(plan.trade!.plan);
+      expect(edited.completedCrafts).toEqual([]); expect(edited.trade!.plan).toEqual(plan.trade!.plan);
       expect(projectPlanStock(edited).craft).toEqual(edited.inventory);
     }
     expect(plan.trade!.stale).toBe(false);
@@ -87,7 +85,7 @@ describe('plan-local state', () => {
     expect(updatePlanInputs(plan, { inventory: { ore: 3 } }).trade!.stale).toBe(true);
   });
   test('rebuild captures current baseline and resets all execution progress', () => {
-    const old = toggleGatheringComplete(toggleCraftComplete(toggleRunComplete(built(), 0), 'old'), 'gather:ore:3');
+    const old = { ...toggleRunComplete(built(), 0), completedCrafts: ['old'], completedGathering: ['gather:ore:3'] };
     const edited = updatePlanInputs(old, { inventory: { ore: 9 } });
     const next = attachTradePlan(edited, trade, data);
     expect(next.completedGathering).toEqual([]); expect(next.completedCrafts).toEqual([]); expect(next.trade!.completedRuns).toEqual([]);
@@ -109,13 +107,13 @@ describe('plan-local state', () => {
 
 describe('bounded snapshot parsing', () => {
   test('round trips independent plans and stale historical progress', () => {
-    const plan = updatePlanInputs(toggleCraftComplete(toggleRunComplete(built(), 0), 'action:quantity:methods'), { quantity: 2 });
+    const plan = updatePlanInputs({ ...toggleRunComplete(built(), 0), completedCrafts: ['action:quantity:methods'] }, { quantity: 2 });
     expect(parse([fresh(), { ...plan, id: 'two' }])).toEqual([fresh(), { ...plan, id: 'two' }]);
     expect(parsePlans(null, catalog)).toEqual([]);
     expect(parse([createPlan(catalog, 'swords', { id: 'alias', now: 0 })])[0].recipeId).toBe('sword');
   });
   test('existing v2 plans without gathering progress load without losing inventory or other progress', () => {
-    const plan = toggleCraftComplete(toggleRunComplete(built(), 0), 'craft:wood:6');
+    const plan = { ...toggleRunComplete(built(), 0), completedCrafts: ['craft:wood:6'] };
     const existing: Record<string, unknown> = { ...plan };
     delete existing.completedGathering;
     expect(parse([existing])).toEqual([{ ...plan, completedGathering: [] }]);

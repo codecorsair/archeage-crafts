@@ -3,7 +3,7 @@ import { craftingTargets, DEFAULT_MASTER, MASTER_RECIPE_IDS, PROFESSIONS, type M
 import type { Catalog, Inventory } from './types';
 import { planTrades, type TradeCatalog, type TradePlan, type TradeReward } from './trading';
 import { calculate } from './calculator';
-import { craftingPlan, gatheringPlan } from './crafting-plan';
+import { craftingPlan, gatheringPlan, type GatheringPlanRow, type CraftingPlanRow } from './crafting-plan';
 
 export type TradeBonus = { protectedRunCount: number; protectedInputs: TradePlan['inputs']; extras: { runIndex: number; loadIndex: number; count: number }[] };
 
@@ -13,6 +13,7 @@ export type PlanSettings = { master: MasterProfessions; tradeAccess: TradeAccess
 export type CraftPlan = {
   id: string; name: string; recipeId: string; quantity: number; inventory: Inventory; settings: PlanSettings;
   trade: null | { plan: TradePlan; data: TradeCatalog; inventorySnapshot: Inventory; stale: boolean; completedRuns: number[]; bonus: TradeBonus | null };
+  progress: Record<string, number>;
   completedGathering: string[]; completedCrafts: string[]; createdAt: number; updatedAt: number;
 };
 function invalid(label: string): never { throw new Error(`Invalid plan: ${label}`); }
@@ -61,10 +62,10 @@ export function createPlan(catalog: Catalog, recipeId: string, options: { id?: s
   const target = canonicalTarget(catalog, recipeId);
   return { id: text(options.id ?? crypto.randomUUID()), name: text(options.name ?? catalog.recipes.find((recipe) => recipe.id === target)!.name), recipeId: target,
     quantity: count(options.quantity ?? 1, 1), inventory: {}, settings: { master: { ...DEFAULT_MASTER }, tradeAccess: { pioneer: false, senior: false }, farmable: [], includeConflict: false },
-    trade: null, completedGathering: [], completedCrafts: [], createdAt: now, updatedAt: now };
+    trade: null, progress: {}, completedGathering: [], completedCrafts: [], createdAt: now, updatedAt: now };
 }
 export type PlanInputPatch = { recipeId?: string; quantity?: number; inventory?: Inventory; settings?: Partial<PlanSettings> };
-/** Input edits retain the old instructions and checkmarks, but pause trade projection. */
+/** Changed inputs clear task work and pause trade projection, retaining historical runs. */
 export function updatePlanInputs(plan: CraftPlan, patch: PlanInputPatch): CraftPlan {
   if (patch.quantity !== undefined) count(patch.quantity, 1);
   if (patch.recipeId !== undefined) text(patch.recipeId);
@@ -84,7 +85,7 @@ export function updatePlanInputs(plan: CraftPlan, patch: PlanInputPatch): CraftP
     && settings.farmable.length === plan.settings.farmable.length
     && settings.farmable.every((id) => plan.settings.farmable.includes(id));
   if (unchanged) return plan;
-  return { ...plan, ...patch, inventory: { ...(patch.inventory ?? plan.inventory) }, settings: { ...settings, master: { ...settings.master }, tradeAccess: { ...settings.tradeAccess }, farmable: [...settings.farmable] },
+  return { ...plan, ...patch, progress: {}, completedGathering: [], completedCrafts: [], inventory: { ...(patch.inventory ?? plan.inventory) }, settings: { ...settings, master: { ...settings.master }, tradeAccess: { ...settings.tradeAccess }, farmable: [...settings.farmable] },
     trade: plan.trade ? { ...plan.trade, stale: true } : null };
 }
 /** Parent obtains rebuild confirmation before calling. Snapshot only used packs and their posts. */
@@ -92,7 +93,7 @@ export function attachTradePlan(plan: CraftPlan, trade: TradePlan, data: TradeCa
   const used = new Set(trade.runs.flatMap((run) => run.loads.map((load) => load.packId)));
   const packs = data.packs.filter((pack) => used.has(pack.id));
   const posts = new Set(packs.flatMap((pack) => [pack.originId, ...pack.deliveries.map((delivery) => delivery.destinationId)]));
-  const next: CraftPlan = { ...plan, completedGathering: [], completedCrafts: [], trade: { plan: structuredClone(trade), data: structuredClone({ ...data, packs, posts: data.posts.filter((post) => posts.has(post.id)) }), inventorySnapshot: { ...plan.inventory }, stale: false, completedRuns: [], bonus: null } };
+  const next: CraftPlan = { ...plan, progress: {}, completedGathering: [], completedCrafts: [], trade: { plan: structuredClone(trade), data: structuredClone({ ...data, packs, posts: data.posts.filter((post) => posts.has(post.id)) }), inventorySnapshot: { ...plan.inventory }, stale: false, completedRuns: [], bonus: null } };
   projectPlanStock(next);
   return next;
 }
@@ -144,11 +145,48 @@ function prefixCosts(runs: TradePlan['runs'], packs: TradeCatalog['packs']): Map
   }
   return costs;
 }
-function visibleKeys(catalog: Catalog, plan: CraftPlan): { gathering: Set<string>; crafts: Set<string> } {
+function visibleTasks(catalog: Catalog, plan: CraftPlan): ProgressTask[] {
   const stock = projectPlanStock(plan);
   const result = calculate(catalog, plan.recipeId, plan.quantity, stock.craft, { master: plan.settings.master, masterInventory: stock.owned });
-  return { gathering: new Set(gatheringPlan(result, plan.trade?.plan).map(action => action.key)), crafts: new Set(craftingPlan(catalog, result).map(action => action.key)) };
+  return [...gatheringPlan(result, plan.trade && !plan.trade.stale ? plan.trade.plan : null), ...craftingPlan(catalog, result)];
 }
+export type ProgressTask = GatheringPlanRow | CraftingPlanRow;
+
+export function taskProgress(plan: CraftPlan, task: ProgressTask): { done: number; remaining: number; complete: boolean } {
+  const planned = 'count' in task ? task.count : task.produced;
+  const legacy = 'count' in task ? plan.completedGathering : plan.completedCrafts;
+  const done = Object.hasOwn(plan.progress, task.progressKey) ? plan.progress[task.progressKey] : legacy.includes(task.key) ? planned : 0;
+  return { done, remaining: Math.max(0, planned - done), complete: done >= planned };
+}
+
+export function hasTaskProgress(plan: CraftPlan): boolean {
+  return Object.values(plan.progress).some(done => done > 0) || plan.completedGathering.length > 0 || plan.completedCrafts.length > 0;
+}
+
+export function clearTaskProgress(plan: CraftPlan): CraftPlan {
+  if (!Object.keys(plan.progress).length && !plan.completedGathering.length && !plan.completedCrafts.length) return plan;
+  return { ...plan, progress: {}, completedGathering: [], completedCrafts: [] };
+}
+
+/** Resolve against current instructions, never a cached UI total. Work does not alter stock. */
+export function changeTaskProgress(catalog: Catalog, plan: CraftPlan, taskId: string, change: { add: number } | { set: number } | 'complete'): CraftPlan {
+  const task = visibleTasks(catalog, plan).find(task => task.progressKey === taskId);
+  if (!task) return invalid('missing task');
+  const planned = 'count' in task ? task.count : task.produced;
+  const previous = taskProgress(plan, task).done;
+  let done: number;
+  if (change === 'complete') done = Math.max(previous, planned);
+  else if ('add' in change) done = add(previous, Math.min(count(change.add, 1), Math.max(0, planned - previous)));
+  else {
+    done = count(change.set);
+    if (done > Math.max(planned, previous)) return invalid('task progress exceeds total');
+  }
+  if (done === previous) return plan;
+  return { ...plan, progress: { ...plan.progress, [taskId]: done },
+    completedGathering: 'count' in task ? plan.completedGathering.filter(key => key !== task.key) : plan.completedGathering,
+    completedCrafts: 'count' in task ? plan.completedCrafts : plan.completedCrafts.filter(key => key !== task.key) };
+}
+
 /** Atomically freeze the visible prefix and replan only future runs. */
 export function setTradeBonus(catalog: Catalog, eligibleTradeData: TradeCatalog, plan: CraftPlan, runIndex: number, loadIndex: number, amount: number): CraftPlan {
   count(runIndex); count(loadIndex); count(amount);
@@ -185,22 +223,15 @@ export function setTradeBonus(catalog: Catalog, eligibleTradeData: TradeCatalog,
   const savedPacks = data.packs.filter(pack => used.has(pack.id));
   const usedPosts = new Set(savedPacks.flatMap(pack => [pack.originId, ...pack.deliveries.map(delivery => delivery.destinationId)]));
   const next: CraftPlan = { ...plan, trade: { ...trade, plan: nextTrade, bonus, data: structuredClone({ ...data, packs: savedPacks, posts: data.posts.filter(post => usedPosts.has(post.id)) }) } };
-  const before = visibleKeys(catalog, plan), after = visibleKeys(catalog, next);
-  return { ...next, completedGathering: plan.completedGathering.filter(key => before.gathering.has(key) && after.gathering.has(key)), completedCrafts: plan.completedCrafts.filter(key => before.crafts.has(key) && after.crafts.has(key)) };
+  const before = visibleTasks(catalog, plan), after = new Set(visibleTasks(catalog, next).map(task => task.progressKey));
+  const progress = Object.fromEntries(before.filter(task => after.has(task.progressKey)).map(task => [task.progressKey, taskProgress(plan, task).done]));
+  return { ...next, progress, completedGathering: [], completedCrafts: [] };
 }
 export function toggleRunComplete(plan: CraftPlan, index: number): CraftPlan {
   count(index);
   if (!plan.trade || index >= plan.trade.plan.runs.length) return invalid('run index');
   const completed = plan.trade.completedRuns;
   return { ...plan, trade: { ...plan.trade, completedRuns: completed.includes(index) ? completed.filter((value) => value !== index) : [...completed, index] } };
-}
-export function toggleGatheringComplete(plan: CraftPlan, key: string): CraftPlan {
-  text(key, 10000);
-  return { ...plan, completedGathering: plan.completedGathering.includes(key) ? plan.completedGathering.filter(value => value !== key) : [...plan.completedGathering, key] };
-}
-export function toggleCraftComplete(plan: CraftPlan, key: string): CraftPlan {
-  text(key, 10000);
-  return { ...plan, completedCrafts: plan.completedCrafts.includes(key) ? plan.completedCrafts.filter((value) => value !== key) : [...plan.completedCrafts, key] };
 }
 
 /** Bounded self-contained snapshots. Never read live trade rates or browser storage. */
@@ -216,6 +247,18 @@ export function parsePlans(value: string | null, catalog: Catalog): CraftPlan[] 
     if (entries.length > 5000) return invalid('inventory limit');
     return Object.fromEntries(entries.map(([id, amount]) => [ref(id), count(amount)]));
   };
+  const parseProgress = (value: unknown): Record<string, number> => {
+    if (value === undefined) return {};
+    const entries = Object.entries(object(value));
+    if (entries.length > 5000) return invalid('progress limit');
+    return Object.fromEntries(entries.map(([key, amount]) => {
+      let identity: unknown;
+      try { identity = JSON.parse(key); } catch { return invalid('progress key'); }
+      if (!Array.isArray(identity) || identity.length !== 2 || !['farm', 'gather', 'craft'].includes(identity[0]) || JSON.stringify(identity) !== key) return invalid('progress key');
+      ref(identity[1]);
+      return [key, count(amount)];
+    }));
+  };
   const amounts = (value: unknown) => unique(list(value).map((value) => { const row = object(value); return { itemId: ref(row.itemId), count: count(row.count, 1) }; }), (row) => row.itemId);
   const reward = (value: unknown): TradeReward => {
     const row = object(value);
@@ -226,7 +269,7 @@ export function parsePlans(value: string | null, catalog: Catalog): CraftPlan[] 
   };
   return unique(list(parsed, MAX_PLANS).map((value): CraftPlan => {
     const row = object(value), settings = object(row.settings), master = object(settings.master), access = object(settings.tradeAccess);
-    fields(row, ['id', 'name', 'recipeId', 'quantity', 'inventory', 'settings', 'trade', 'completedGathering', 'completedCrafts', 'createdAt', 'updatedAt']);
+    fields(row, ['id', 'name', 'recipeId', 'quantity', 'inventory', 'settings', 'trade', 'completedGathering', 'completedCrafts', 'progress', 'createdAt', 'updatedAt']);
     fields(settings, ['master', 'tradeAccess', 'farmable', 'includeConflict']);
     fields(master, PROFESSIONS); fields(access, ['pioneer', 'senior']);
     const createdAt = count(row.createdAt), updatedAt = count(row.updatedAt);
@@ -234,7 +277,7 @@ export function parsePlans(value: string | null, catalog: Catalog): CraftPlan[] 
     const plan: CraftPlan = {
       id: text(row.id), name: text(row.name), recipeId: canonicalTarget(catalog, text(row.recipeId)), quantity: count(row.quantity, 1), inventory: inventory(row.inventory),
       settings: { master: Object.fromEntries(PROFESSIONS.map((key) => [key, bool(master[key])])) as MasterProfessions, tradeAccess: { pioneer: bool(access.pioneer), senior: bool(access.senior) }, farmable: unique(list(settings.farmable).map((id) => ref(id)), (id) => id), includeConflict: bool(settings.includeConflict) },
-      trade: null, completedGathering: unique(list(row.completedGathering === undefined ? [] : row.completedGathering).map(key => text(key, 10000)), key => key), completedCrafts: unique(list(row.completedCrafts).map((key) => text(key, 10000)), (key) => key), createdAt, updatedAt,
+      progress: parseProgress(row.progress), trade: null, completedGathering: unique(list(row.completedGathering === undefined ? [] : row.completedGathering).map(key => text(key, 10000)), key => key), completedCrafts: unique(list(row.completedCrafts).map((key) => text(key, 10000)), (key) => key), createdAt, updatedAt,
     };
     if (row.trade === null) return plan;
     const snapshot = object(row.trade), raw = object(snapshot.plan), data = object(snapshot.data);

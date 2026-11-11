@@ -260,7 +260,7 @@
     {/if}
     {#if cleared.length}<details><summary>{cleared.length} current items will be cleared by this replacement</summary><ul>{#each cleared as [id, count]}<li>{items.get(id)?.name ?? id}: {format.format(count)} → 0</li>{/each}</ul></details>{/if}
     <div class="apply-area">
-      <p class="warning">This replaces the entire inventory. Items absent from these screenshots will be cleared.</p>
+      <p class="warning">This replaces the entire inventory, resets gathered and crafted progress, and pauses old trade runs. Items absent from these screenshots will be cleared. The whole plan, including other unsaved changes, will be saved.</p>
       {#if !Object.keys(merged.inventory).length && !issues.length && !unassigned.length && !merged.conflicts.length}<p class="warning">No catalog stock remains in this import. Applying it clears all recorded inventory.</p>{/if}
       {#if saveError}<p class="warning" role="alert">{saveError}</p>{/if}
       <div class="apply-actions"><button type="button" class="replace" disabled={!canApply} onclick={apply}>{saveError ? 'Retry save' : 'Overwrite and save'}</button><button type="button" onclick={reset}>Cancel import</button></div>

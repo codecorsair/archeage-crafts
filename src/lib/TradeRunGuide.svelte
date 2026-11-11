@@ -31,8 +31,9 @@
 
 <div class="trade-actions">
   {#each plan.runs as run, index (index)}
+    {@const destinations = [...new Set(run.loads.map(load => load.destinationId))].map(id => posts.get(id) ?? id)}
     <article class="run-action" class:done={completedRuns.includes(index)}>
-      <h3 class="action-heading"><span>Run {index + 1} · {posts.get(run.originId) ?? run.originId}</span>{#if index < (bonus?.protectedRunCount ?? 0)}<small class="run-fixed" title="This run stays fixed when bonuses recalculate later runs">Fixed</small>{/if}</h3>
+      <h3 class="action-heading"><span>Run {index + 1} · {posts.get(run.originId) ?? run.originId} <span class="run-destinations">→ {destinations.join(' / ')}</span></span>{#if index < (bonus?.protectedRunCount ?? 0)}<small class="run-fixed" title="This run stays fixed when bonuses recalculate later runs">Fixed</small>{/if}</h3>
       <p class="action-meta">{run.channel === 'pve' ? 'PvE' : 'Conflict'} · Day {run.day} · {format.format(run.loads.reduce((sum, load) => sum + load.packs, 0))} packs</p>
       {#each run.loads as load, loadIndex}
         {@const pack = packs.get(load.packId)}
@@ -48,7 +49,7 @@
             <span class="exchange-arrow" aria-hidden="true">→</span>
             <MaterialTile item={items.get(load.rewardItemId) ?? { name: load.rewardItemId }} count={load.received + extra} purpose="Receive" />
           </div>
-          <p>Deliver to <strong>{posts.get(load.destinationId) ?? load.destinationId}</strong></p>
+          <p class="delivery-address">Deliver to <strong>{posts.get(load.destinationId) ?? load.destinationId}</strong></p>
           {#if extra > 0}<p class="reward-breakdown">{format.format(load.received)} expected + {format.format(extra)} extra</p>{/if}
           {#if onBonusChange && !disabled}
             <label class="trade-extra">Extra received

@@ -40,6 +40,14 @@ _Avoid_: Saved trade plan as the primary goal
 
 **Master recipe**: An alternate processing recipe using a rare ingredient instead of ordinary materials. It is eligible only with the relevant profession's Master unlock and available spare rare stock.
 
-**Outdated runs**: Previously configured trade instructions whose planning inputs have changed. Their instructions, progress and recorded extras remain available, but they no longer reduce the current plan's crafting needs until reviewed and rebuilt.
+**Outdated runs**: Previously configured trade instructions whose planning inputs have changed. Their run instructions, run completion and recorded extras remain available, but they no longer reduce the current plan's crafting needs until reviewed and rebuilt.
 
-**Completed step**: A gathering task, trade run or crafting action marked finished by the player. Completion records progress only, without changing inventory or the remaining instruction quantities.
+**Planned work**: The total gathering or crafted output required by the plan before recorded progress is applied.
+
+**Recorded work**: Units already gathered or made for a task. Gathering and crafting are tracked independently; recorded work is not on-hand inventory.
+
+**Remaining work**: Planned work minus recorded work, with a minimum of zero. Trade bonuses can change planned work without erasing what was already done.
+
+**Progress batch**: The units gathered or output items made in one progress update, not the number of crafting clicks.
+
+**Completed step**: A gathering task, trade run or crafting action marked finished by the player. Completion affects work tracking, not inventory or calculated planning requirements.

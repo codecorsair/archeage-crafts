@@ -1,30 +1,48 @@
 <script lang="ts">
   import FarmingPicker from './FarmingPicker.svelte';
-  import { availableTradeData } from '../data/trading';
+  import { availableTradeData, droppedTradeMaterialIds } from '../data/trading';
   import type { CraftPlan } from './plans';
   import type { Catalog } from './types';
 
-  let { catalog, plan, onChange, onReview, onRemove }: {
+  let { catalog, plan, mode = 'all', onChange, onReview, onRemove }: {
     catalog: Catalog;
     plan: CraftPlan;
+    mode?: 'owned' | 'dropped' | 'all';
     onChange: (settings: CraftPlan['settings']) => void;
-    onReview: () => void;
+    onReview: (farmable?: string[]) => void;
     onRemove: () => void;
   } = $props();
   const data = $derived(availableTradeData(plan.settings.tradeAccess));
+
+  function changeAccess(key: 'pioneer' | 'senior', event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    const checked = input.checked;
+    input.checked = plan.settings.tradeAccess[key];
+    onChange({ ...plan.settings, tradeAccess: { ...plan.settings.tradeAccess, [key]: checked } });
+  }
+
+  function changeChannels(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    const checked = input.checked;
+    input.checked = plan.settings.includeConflict;
+    onChange({ ...plan.settings, includeConflict: checked });
+  }
 </script>
 
 <section class="trade-setup">
-  <p class="note">Configure the runs for this plan. Changes take effect after you review and rebuild.</p>
+  <p class="note">{mode === 'owned' ? 'Trade spare on-hand materials without assuming any farming.' : mode === 'dropped' ? 'Choose dropped materials you can farm for trades. Existing farming selections stay enabled.' : 'Choose access, channels and the pack ingredients you can farm.'} Review and apply the runs before they take effect.</p>
+  {#if mode === 'owned' && plan.settings.farmable.length}<p class="note">Applying owned-stock runs clears current farming selections.</p>{/if}
   <fieldset>
     <legend>Company access</legend>
-    <label class="toggle"><input type="checkbox" checked={plan.settings.tradeAccess.pioneer} onchange={event => onChange({ ...plan.settings, tradeAccess: { ...plan.settings.tradeAccess, pioneer: event.currentTarget.checked } })} />Pioneer Operative: blue basic trades</label>
-    <label class="toggle"><input type="checkbox" checked={plan.settings.tradeAccess.senior} onchange={event => onChange({ ...plan.settings, tradeAccess: { ...plan.settings.tradeAccess, senior: event.currentTarget.checked } })} />Senior Operative: purple basic trades</label>
+    <label class="toggle"><input type="checkbox" checked={plan.settings.tradeAccess.pioneer} onchange={event => changeAccess('pioneer', event)} />Pioneer Operative: blue basic trades</label>
+    <label class="toggle"><input type="checkbox" checked={plan.settings.tradeAccess.senior} onchange={event => changeAccess('senior', event)} />Senior Operative: purple basic trades</label>
   </fieldset>
-  <label class="toggle"><input type="checkbox" checked={plan.settings.includeConflict} onchange={event => onChange({ ...plan.settings, includeConflict: event.currentTarget.checked })} />Include conflict channels</label>
-  <FarmingPicker {catalog} tradeData={data} selected={plan.settings.farmable} onChange={farmable => onChange({ ...plan.settings, farmable })} />
+  <label class="toggle"><input type="checkbox" checked={plan.settings.includeConflict} onchange={changeChannels} />Include conflict channels</label>
+  {#if mode !== 'owned'}
+    <FarmingPicker {catalog} tradeData={data} selected={plan.settings.farmable} allowed={mode === 'dropped' ? droppedTradeMaterialIds : undefined} onChange={farmable => onChange({ ...plan.settings, farmable })} />
+  {/if}
   <div class="button-row">
-    <button class="primary" type="button" onclick={onReview}>{plan.trade ? 'Review rebuild' : 'Review trade runs'}</button>
+    <button class="primary" type="button" onclick={() => onReview(mode === 'owned' ? [] : plan.settings.farmable)}>{plan.trade ? 'Review rebuild' : 'Review trade runs'}</button>
     {#if plan.trade}<button type="button" onclick={onRemove}>Remove trade runs</button>{/if}
   </div>
   <p class="note">Up to seven packs per run. Three PvE runs per day, plus three conflict runs when enabled. Farming and travel are not included in trade days.</p>

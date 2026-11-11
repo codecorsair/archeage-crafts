@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import catalog from './catalog.json';
-import { availableTradeData, tradeData } from './trading';
+import { availableTradeData, droppedTradeMaterialIds, tradeData } from './trading';
 import { planTrades } from '../lib/trading';
 
 const items = new Map(catalog.items.map((item) => [item.id, item]));
@@ -29,6 +29,14 @@ describe('company rank trade availability', () => {
       expect(data.packs.filter((pack) => !basicIds.has(pack.materials[0].itemId))).toEqual(bossPacks);
     });
   }
+
+  test('dropped farming choices contain only supported non-basic pack inputs', () => {
+    const expected = new Set(tradeData.packs.flatMap(pack => pack.materials.map(material => material.itemId)).filter(id => !basicIds.has(id)));
+    const eligible = new Set(availableTradeData({ pioneer: false, senior: false }).packs.flatMap(pack => pack.materials.map(material => material.itemId)));
+    expect(droppedTradeMaterialIds).toEqual(expected);
+    expect(droppedTradeMaterialIds.size).toBeGreaterThan(0);
+    expect([...droppedTradeMaterialIds].every(id => eligible.has(id) && items.has(id))).toBe(true);
+  });
 
   test('filtering does not mutate the full catalog or earlier results', () => {
     const before = structuredClone(tradeData);

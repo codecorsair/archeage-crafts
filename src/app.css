@@ -35,7 +35,6 @@ legend { padding: 0 5px; color: var(--muted); font-size: 12px; }
 .site-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 22px max(24px, 4vw); border-bottom: 1px solid var(--line); background: #211e19; }
 .brand { color: #e6deca; font: 25px Georgia, serif; letter-spacing: .02em; }
 .brand small { display: block; margin-top: 7px; color: var(--muted); font: 9px system-ui, sans-serif; letter-spacing: .2em; text-transform: uppercase; }
-.header-note { color: var(--muted); font-size: 12px; }
 .workspace { width: min(2200px, 94%); margin: 28px auto 60px; display: grid; grid-template-columns: 250px minmax(0, 1fr); align-items: start; gap: 24px; }
 .workspace-content, .plan-rail { min-width: 0; }
 .plan-rail { display: grid; gap: 18px; position: sticky; top: 20px; }
@@ -61,7 +60,9 @@ legend { padding: 0 5px; color: var(--muted); font-size: 12px; }
 .phase > button { margin-top: 12px; }
 .trade-actions-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 9px; }
 .trade-actions-bar > button { padding: 8px; font-size: 11px; }
-.preset-note { margin-bottom: 15px; }
+.trade-presets { margin: 14px 0 18px; padding-top: 12px; border-top: 1px solid var(--line); }
+.trade-presets h3 { color: var(--gold); font-size: 12px; }
+.trade-presets .note { margin: 6px 0 10px; font-size: 11px; }
 .preparation { margin-bottom: 20px; }
 .gathering-group { display: grid; grid-template-columns: 160px minmax(0, 1fr); align-items: start; gap: 16px; padding: 12px 0; border-top: 1px solid var(--line); }
 .gathering-group > h3 { margin-top: 18px; font-size: 11px; font-weight: 500; color: var(--muted); }
@@ -84,6 +85,8 @@ legend { padding: 0 5px; color: var(--muted); font-size: 12px; }
 .run-load { padding: 12px 0 0; }
 .run-load h3 { font-weight: 500; color: #e0ceaa; overflow-wrap: anywhere; }
 .run-load p { color: var(--muted); font-size: 11px; line-height: 1.7; margin: 5px 0; }
+.run-destinations, .delivery-address strong { color: var(--gold); }
+.run-load .delivery-address { font-size: 12px; }
 .trade-exchange { display: flex; align-items: center; gap: 12px; margin: 10px 0; }
 .trade-exchange > .item-tiles { flex: 1; }
 .exchange-arrow { flex: none; color: #d6be83; }
@@ -110,7 +113,6 @@ dialog .button-row { position: sticky; bottom: -25px; padding: 16px 0; backgroun
 @media (min-width: 2200px) { .workspace { gap: 30px; grid-template-columns: 290px minmax(0, 1fr); } .phase-board { gap: 22px; } .panel { padding: 24px; } }
 @media (max-width: 1150px) { .phase-board { grid-template-columns: 1fr; } }
 @media (max-width: 720px) {
-  .header-note { display: none; }
   .site-header { padding: 18px; }
   .workspace { width: calc(100% - 26px); margin-top: 16px; grid-template-columns: minmax(0, 1fr); gap: 18px; }
   .plan-rail { position: static; gap: 10px; }

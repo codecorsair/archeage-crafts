@@ -3,12 +3,13 @@
   import { questlogSearchUrl } from './questlog';
   import type { Item } from './types';
 
-  let { item, count, complete = false, purpose, onToggle }: {
+  let { item, count, complete = false, purpose, onProgress, expanded = false }: {
     item: Pick<Item, 'name' | 'icon' | 'grade'>;
     count: number;
     complete?: boolean;
     purpose?: string;
-    onToggle?: () => void;
+    onProgress?: (anchor: HTMLButtonElement) => void;
+    expanded?: boolean;
   } = $props();
   const format = new Intl.NumberFormat('en-US');
   const quantity = $derived(format.format(count));
@@ -25,8 +26,8 @@
 
 <div class="material-tile">
   <div class="tile-image">
-    {#if onToggle}
-      <button class="slot" type="button" aria-label={label} aria-pressed={complete} onclick={onToggle}>
+    {#if onProgress}
+      <button class="slot" type="button" aria-label={`${label}. ${complete ? 'Complete. ' : ''}Update progress.`} aria-haspopup="dialog" aria-expanded={expanded} aria-controls="progress-popover" onclick={event => onProgress(event.currentTarget)}>
         {@render artwork()}
       </button>
     {:else}

@@ -47,11 +47,9 @@
             step="1"
             value={inventory[item.id] ?? 0}
             onfocus={() => editingId = item.id}
-            onblur={(event) => {
-              editingId = null;
-              if (event.currentTarget.value === '') setStock(item.id, event);
-            }}
-            oninput={(event) => setStock(item.id, event)}
+            onblur={() => editingId = null}
+            oninput={event => event.currentTarget.setCustomValidity('')}
+            onchange={event => setStock(item.id, event)}
           />
         </div>
       {/each}
