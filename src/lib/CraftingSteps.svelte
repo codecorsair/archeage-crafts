@@ -21,9 +21,11 @@
     <article class="craft-action" class:done={complete}>
       <div class="action-heading">
         <ItemIcon icon={items.get(row.itemId)?.icon} grade={items.get(row.itemId)?.grade} size="small" />
-        <h3>Make {format.format(row.produced)} {items.get(row.itemId)?.name ?? row.itemId}</h3>
+        <div>
+          <h3>Make {format.format(row.produced)} {items.get(row.itemId)?.name ?? row.itemId}</h3>
+          <p class="action-meta">{recipes.get(row.methods[0]?.recipeId)?.station ?? 'Crafting'}{#if row.surplus > 0} · {format.format(row.surplus)} extra{/if}</p>
+        </div>
       </div>
-      <p class="action-meta">{recipes.get(row.methods[0]?.recipeId)?.station ?? 'Crafting'}{#if row.surplus > 0} · {format.format(row.surplus)} extra{/if}</p>
       <ul class="item-tiles craft-inputs" aria-label={`Materials for ${row.produced} ${items.get(row.itemId)?.name ?? row.itemId}`}>
         {#each row.inputs as input (input.itemId)}
           <li><MaterialTile item={items.get(input.itemId) ?? { name: input.itemId }} count={input.count} /></li>

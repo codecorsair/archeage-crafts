@@ -71,7 +71,8 @@ legend { padding: 0 5px; color: var(--muted); font-size: 12px; }
 .craft-inputs { margin-top: 12px; }
 .run-action, .craft-action { padding: 16px 0; border-top: 1px solid var(--line); }
 .action-heading { display: flex; align-items: flex-start; gap: 9px; color: #eadfc6; font-size: 13px; line-height: 1.6; }
-.action-heading > span, .action-heading > h3 { min-width: 0; overflow-wrap: anywhere; }
+.action-heading > span, .action-heading > h3, .action-heading > div { min-width: 0; overflow-wrap: anywhere; }
+.action-heading .action-meta { margin: 0; }
 .complete-action { margin-top: 12px; padding: 8px 10px; font-size: 12px; }
 .complete-action.completed { border-color: #6d895c; color: #c3d6ad; background: #27301e; }
 .completion-status { color: #b2c19b; font-size: 11px; margin-top: 12px; }
