@@ -1,14 +1,18 @@
 import type { TradeAccess } from '../data/trading';
 import { craftingTargets, DEFAULT_MASTER, MASTER_RECIPE_IDS, PROFESSIONS, type MasterProfessions } from './recipe-policy';
 import type { Catalog, Inventory } from './types';
-import type { TradeCatalog, TradePlan, TradeReward } from './trading';
+import { planTrades, type TradeCatalog, type TradePlan, type TradeReward } from './trading';
+import { calculate } from './calculator';
+import { craftingPlan, gatheringPlan } from './crafting-plan';
+
+export type TradeBonus = { protectedRunCount: number; protectedInputs: TradePlan['inputs']; extras: { runIndex: number; loadIndex: number; count: number }[] };
 
 export const MAX_PLANS = 100;
 export const MAX_PLANS_CHARS = 2_000_000;
 export type PlanSettings = { master: MasterProfessions; tradeAccess: TradeAccess; farmable: string[]; includeConflict: boolean };
 export type CraftPlan = {
   id: string; name: string; recipeId: string; quantity: number; inventory: Inventory; settings: PlanSettings;
-  trade: null | { plan: TradePlan; data: TradeCatalog; inventorySnapshot: Inventory; stale: boolean; completedRuns: number[] };
+  trade: null | { plan: TradePlan; data: TradeCatalog; inventorySnapshot: Inventory; stale: boolean; completedRuns: number[]; bonus: TradeBonus | null };
   completedGathering: string[]; completedCrafts: string[]; createdAt: number; updatedAt: number;
 };
 function invalid(label: string): never { throw new Error(`Invalid plan: ${label}`); }
@@ -88,21 +92,101 @@ export function attachTradePlan(plan: CraftPlan, trade: TradePlan, data: TradeCa
   const used = new Set(trade.runs.flatMap((run) => run.loads.map((load) => load.packId)));
   const packs = data.packs.filter((pack) => used.has(pack.id));
   const posts = new Set(packs.flatMap((pack) => [pack.originId, ...pack.deliveries.map((delivery) => delivery.destinationId)]));
-  const next: CraftPlan = { ...plan, completedGathering: [], completedCrafts: [], trade: { plan: structuredClone(trade), data: structuredClone({ ...data, packs, posts: data.posts.filter((post) => posts.has(post.id)) }), inventorySnapshot: { ...plan.inventory }, stale: false, completedRuns: [] } };
-  projectPlanInventory(next);
+  const next: CraftPlan = { ...plan, completedGathering: [], completedCrafts: [], trade: { plan: structuredClone(trade), data: structuredClone({ ...data, packs, posts: data.posts.filter((post) => posts.has(post.id)) }), inventorySnapshot: { ...plan.inventory }, stale: false, completedRuns: [], bonus: null } };
+  projectPlanStock(next);
   return next;
 }
-/** Frozen all-run preview. Farmed pack costs do not become new inventory. */
-export function projectPlanInventory(plan: CraftPlan): Inventory {
-  if (!plan.trade || plan.trade.stale) return { ...plan.inventory };
+/** Rewards fund ordinary crafting only, never pack costs or Master eligibility. */
+export function projectPlanStock(plan: CraftPlan): { owned: Inventory; craft: Inventory } {
+  if (!plan.trade || plan.trade.stale) return { owned: { ...plan.inventory }, craft: { ...plan.inventory } };
   const result = { ...plan.trade.inventorySnapshot };
   for (const input of plan.trade.plan.inputs) {
     const available = count(result[input.itemId] ?? 0);
     if (count(input.owned) > available) return invalid('owned costs exceed snapshot');
     result[input.itemId] = available - input.owned;
   }
-  for (const reward of plan.trade.plan.rewards) result[reward.itemId] = add(result[reward.itemId] ?? 0, count(reward.count, 1));
-  return result;
+  const craft = { ...result };
+  for (const reward of plan.trade.plan.rewards) craft[reward.itemId] = add(craft[reward.itemId] ?? 0, count(reward.count, 1));
+  return { owned: result, craft };
+}
+/** Validate persisted reservations against historical pack costs, not current stock. */
+function parseTradeBonus(value: unknown, runs: TradePlan['runs'], packs: TradeCatalog['packs'], inputs: TradePlan['inputs']): TradeBonus | null {
+  if (value === undefined || value === null) return null;
+  const row = object(value);
+  fields(row, ['protectedRunCount', 'protectedInputs', 'extras']);
+  const protectedRunCount = count(row.protectedRunCount, 1);
+  if (protectedRunCount > runs.length) return invalid('protected prefix');
+  const costs = prefixCosts(runs.slice(0, protectedRunCount), packs);
+  const protectedInputs = unique(list(row.protectedInputs).map(value => {
+    const input = object(value);
+    fields(input, ['itemId', 'required', 'owned', 'farm']);
+    const itemId = text(input.itemId), required = count(input.required, 1), owned = count(input.owned), farm = count(input.farm);
+    const total = inputs.find(input => input.itemId === itemId);
+    if (add(owned, farm) !== required || costs.get(itemId) !== required || !total || owned > total.owned || farm > total.farm) return invalid('protected input totals');
+    return { itemId, required, owned, farm };
+  }), input => input.itemId);
+  if (protectedInputs.length !== costs.size) return invalid('protected costs');
+  const extras = unique(list(row.extras, 10000).map(value => {
+    const extra = object(value);
+    fields(extra, ['runIndex', 'loadIndex', 'count']);
+    const runIndex = count(extra.runIndex), loadIndex = count(extra.loadIndex), amount = count(extra.count, 1);
+    if (runIndex >= protectedRunCount || loadIndex >= runs[runIndex].loads.length) return invalid('bonus index');
+    return { runIndex, loadIndex, count: amount };
+  }), extra => `${extra.runIndex}:${extra.loadIndex}`);
+  return { protectedRunCount, protectedInputs, extras };
+}
+function prefixCosts(runs: TradePlan['runs'], packs: TradeCatalog['packs']): Map<string, number> {
+  const costs = new Map<string, number>();
+  for (const run of runs) for (const load of run.loads) {
+    const pack = packs.find(pack => pack.id === load.packId);
+    if (!pack) return invalid('missing historical pack');
+    for (const material of pack.materials) costs.set(material.itemId, add(costs.get(material.itemId) ?? 0, multiply(material.count, load.packs)));
+  }
+  return costs;
+}
+function visibleKeys(catalog: Catalog, plan: CraftPlan): { gathering: Set<string>; crafts: Set<string> } {
+  const stock = projectPlanStock(plan);
+  const result = calculate(catalog, plan.recipeId, plan.quantity, stock.craft, { master: plan.settings.master, masterInventory: stock.owned });
+  return { gathering: new Set(gatheringPlan(result, plan.trade?.plan).map(action => action.key)), crafts: new Set(craftingPlan(catalog, result).map(action => action.key)) };
+}
+/** Atomically freeze the visible prefix and replan only future runs. */
+export function setTradeBonus(catalog: Catalog, eligibleTradeData: TradeCatalog, plan: CraftPlan, runIndex: number, loadIndex: number, amount: number): CraftPlan {
+  count(runIndex); count(loadIndex); count(amount);
+  const trade = plan.trade;
+  if (!trade || trade.stale || !trade.plan.runs[runIndex]?.loads[loadIndex]) return invalid('bonus requires an active load');
+  const previous = trade.bonus;
+  const currentAmount = previous?.extras.find(extra => extra.runIndex === runIndex && extra.loadIndex === loadIndex)?.count ?? 0;
+  if (amount === currentAmount) return plan;
+  const protectedRunCount = Math.max(previous?.protectedRunCount ?? 0, runIndex + 1, ...trade.completedRuns.map(index => index + 1));
+  const costs = prefixCosts(trade.plan.runs.slice(previous?.protectedRunCount ?? 0, protectedRunCount), trade.data.packs);
+  const reserved = new Map((previous?.protectedInputs ?? []).map(input => [input.itemId, { ...input }]));
+  for (const [itemId, required] of costs) {
+    const old = reserved.get(itemId) ?? { itemId, required: 0, owned: 0, farm: 0 };
+    const available = (trade.plan.inputs.find(input => input.itemId === itemId)?.owned ?? 0) - old.owned;
+    if (available < 0) return invalid('protected owned costs');
+    const owned = Math.min(required, available);
+    reserved.set(itemId, { itemId, required: add(old.required, required), owned: add(old.owned, owned), farm: add(old.farm, required - owned) });
+  }
+  const extras = (previous?.extras ?? []).filter(extra => extra.runIndex !== runIndex || extra.loadIndex !== loadIndex).map(extra => ({ ...extra }));
+  if (amount > 0) extras.push({ runIndex, loadIndex, count: amount });
+  const bonus: TradeBonus = { protectedRunCount, protectedInputs: [...reserved.values()], extras };
+  // Historical definitions win, including unused old suffix packs needed after clearing.
+  const packs = new Map(eligibleTradeData.packs.map(pack => [pack.id, pack]));
+  for (const pack of trade.data.packs) packs.set(pack.id, pack);
+  const posts = new Map(eligibleTradeData.posts.map(post => [post.id, post]));
+  for (const post of trade.data.posts) posts.set(post.id, post);
+  const data = { sample: eligibleTradeData.sample, packs: [...packs.values()], posts: [...posts.values()] };
+  const bonusRewards = extras.map(extra => ({ itemId: trade.plan.runs[extra.runIndex].loads[extra.loadIndex].rewardItemId, count: extra.count }));
+  const nextTrade = planTrades(catalog, data, plan.recipeId, plan.quantity, trade.inventorySnapshot, new Set(plan.settings.farmable), {
+    master: plan.settings.master, includeConflict: plan.settings.includeConflict,
+    continuation: { runs: trade.plan.runs.slice(0, protectedRunCount), inputs: bonus.protectedInputs, bonusRewards },
+  });
+  const used = new Set([...trade.data.packs.map(pack => pack.id), ...nextTrade.runs.flatMap(run => run.loads.map(load => load.packId))]);
+  const savedPacks = data.packs.filter(pack => used.has(pack.id));
+  const usedPosts = new Set(savedPacks.flatMap(pack => [pack.originId, ...pack.deliveries.map(delivery => delivery.destinationId)]));
+  const next: CraftPlan = { ...plan, trade: { ...trade, plan: nextTrade, bonus, data: structuredClone({ ...data, packs: savedPacks, posts: data.posts.filter(post => usedPosts.has(post.id)) }) } };
+  const before = visibleKeys(catalog, plan), after = visibleKeys(catalog, next);
+  return { ...next, completedGathering: plan.completedGathering.filter(key => before.gathering.has(key) && after.gathering.has(key)), completedCrafts: plan.completedCrafts.filter(key => before.crafts.has(key) && after.crafts.has(key)) };
 }
 export function toggleRunComplete(plan: CraftPlan, index: number): CraftPlan {
   count(index);
@@ -154,7 +238,7 @@ export function parsePlans(value: string | null, catalog: Catalog): CraftPlan[] 
     };
     if (row.trade === null) return plan;
     const snapshot = object(row.trade), raw = object(snapshot.plan), data = object(snapshot.data);
-    fields(snapshot, ['plan', 'data', 'inventorySnapshot', 'stale', 'completedRuns']);
+    fields(snapshot, ['plan', 'data', 'inventorySnapshot', 'stale', 'completedRuns', 'bonus']);
     fields(raw, ['requirements', 'runs', 'inputs', 'unresolved', 'rewards', 'days']);
     fields(data, ['sample', 'posts', 'packs']);
     const posts = unique(list(data.posts, 100).map((value) => { const post = object(value); return { id: text(post.id), name: text(post.name) }; }), (post) => post.id);
@@ -202,12 +286,17 @@ export function parsePlans(value: string | null, catalog: Catalog): CraftPlan[] 
       if (add(owned, farm) !== required) return invalid('input totals');
       return { itemId: ref(input.itemId), required, owned, farm };
     }), (input) => input.itemId);
+    const bonus = parseTradeBonus(snapshot.bonus, runs, packs, inputs);
+    for (const extra of bonus?.extras ?? []) {
+      const itemId = runs[extra.runIndex].loads[extra.loadIndex].rewardItemId;
+      rewardTotals.set(itemId, add(rewardTotals.get(itemId) ?? 0, extra.count));
+    }
     const rewards = amounts(raw.rewards), days = count(raw.days);
     if (days !== Math.max(0, ...runs.map((run) => run.day)) || inputs.length !== inputTotals.size || inputs.some((input) => inputTotals.get(input.itemId) !== input.required) || rewards.length !== rewardTotals.size || rewards.some((reward) => rewardTotals.get(reward.itemId) !== reward.count)) return invalid('snapshot totals');
     const completedRuns = unique(list(snapshot.completedRuns, runs.length).map((value) => { const index = count(value); if (index >= runs.length) return invalid('run progress'); return index; }), (index) => index);
-    plan.trade = { plan: { requirements, runs, inputs, unresolved: amounts(raw.unresolved), rewards, days }, data: { sample: bool(data.sample), posts, packs }, inventorySnapshot: inventory(snapshot.inventorySnapshot), stale: bool(snapshot.stale), completedRuns };
+    plan.trade = { plan: { requirements, runs, inputs, unresolved: amounts(raw.unresolved), rewards, days }, data: { sample: bool(data.sample), posts, packs }, inventorySnapshot: inventory(snapshot.inventorySnapshot), stale: bool(snapshot.stale), completedRuns, bonus };
     // Validate even paused historical previews, including arithmetic overflow.
-    projectPlanInventory({ ...plan, trade: { ...plan.trade, stale: false } });
+    projectPlanStock({ ...plan, trade: { ...plan.trade, stale: false } });
     return plan;
   }), (plan) => plan.id);
 }

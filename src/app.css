@@ -77,6 +77,10 @@ legend { padding: 0 5px; color: var(--muted); font-size: 12px; }
 .complete-action.completed { border-color: #6d895c; color: #c3d6ad; background: #27301e; }
 .completion-status { color: #b2c19b; font-size: 11px; margin-top: 12px; }
 .action-meta { color: var(--muted); font-size: 11px; line-height: 1.6; margin: 7px 0 0; }
+.run-fixed { margin-left: auto; flex: none; padding: 1px 5px; border: 1px solid var(--line); color: var(--muted); font-size: 10px; font-weight: 400; }
+.trade-extra { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; color: var(--muted); font-size: 11px; }
+.trade-extra input { width: 76px; min-width: 0; padding: 7px 8px; }
+.run-load .reward-breakdown { color: #b2c19b; }
 .run-load { padding: 12px 0 0; }
 .run-load h3 { font-weight: 500; color: #e0ceaa; overflow-wrap: anywhere; }
 .run-load p { color: var(--muted); font-size: 11px; line-height: 1.7; margin: 5px 0; }

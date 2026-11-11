@@ -101,7 +101,7 @@ export function planTrades(
   quantity: number,
   inventory: Inventory,
   farmable: ReadonlySet<string>,
-  options: { master?: Readonly<MasterProfessions>; includeConflict?: boolean } = {},
+  options: { master?: Readonly<MasterProfessions>; includeConflict?: boolean; continuation?: { runs: TradeRun[]; inputs: TradePlan['inputs']; bonusRewards: TradePlan['rewards'] } } = {},
 ): TradePlan {
   validate(catalog, tradeData);
   for (const [id, count] of Object.entries(inventory)) {
@@ -113,7 +113,15 @@ export function planTrades(
     const reward = delivery.rewards[channel];
     if (reward.kind === 'material') external.add(reward.itemId);
   }
+  const prefix = structuredClone(options.continuation?.runs ?? []);
+  const prefixDay = Math.max(1, ...prefix.map(run => run.day));
+  const initialCharges = (channel: TradeChannel) => sum((prefixDay - 1) * 3, prefix.filter(run => run.day === prefixDay && run.channel === channel).length);
   const owned = new Map(Object.entries(inventory));
+  for (const input of options.continuation?.inputs ?? []) {
+    const available = owned.get(input.itemId) ?? 0;
+    if (input.owned > available) throw new Error('Protected costs exceed snapshot');
+    owned.set(input.itemId, available - input.owned);
+  }
   let calculation = calculate(catalog, recipeId, quantity, inventory, { master: options.master, externalItems: external });
   let stock = new Map<string, number>();
   let remaining = new Map<string, number>();
@@ -124,9 +132,11 @@ export function planTrades(
     packsByOrigin.set(pack.originId, packs);
   }
   const pickups: TradeRun[] = [];
-  const inputs = new Map<string, { itemId: string; required: number; owned: number; farm: number }>();
+  const inputs = new Map((options.continuation?.inputs ?? []).map(input => [input.itemId, { ...input }]));
   const rewards = new Map<string, number>();
-  const chargeCounts: Record<TradeChannel, number> = { pve: 0, conflict: 0 };
+  for (const run of prefix) for (const load of run.loads) rewards.set(load.rewardItemId, sum(rewards.get(load.rewardItemId) ?? 0, load.received));
+  for (const reward of options.continuation?.bonusRewards ?? []) rewards.set(reward.itemId, sum(rewards.get(reward.itemId) ?? 0, reward.count));
+  const chargeCounts: Record<TradeChannel, number> = { pve: initialCharges('pve'), conflict: initialCharges('conflict') };
   // Recalculate the whole graph to aggregate shared demands before batch rounding.
   // Only owned stock can fund packs; acquired rewards exist only in craft stock.
   const refresh = (): void => {
@@ -141,7 +151,8 @@ export function planTrades(
   };
   refresh();
   let work = 0;
-  let totalPacks = 0;
+  let totalPacks = prefix.reduce((total, run) => sum(total, run.loads.reduce((slots, load) => sum(slots, load.packs), 0)), 0);
+  if (totalPacks > 10_000) throw new Error('Trade plan exceeds 10000 packs; reduce the requested quantity');
   while (true) {
     let best: { pickup: TradeRun; stock: Map<string, number>; remaining: Map<string, number>; inputs: { itemId: string; required: number; owned: number; farm: number }[]; useful: number } | undefined;
     for (const channel of availableChannels) for (const post of tradeData.posts) {
@@ -232,13 +243,14 @@ export function planTrades(
     grouped.set(key, carts);
   }
   pickups.length = 0;
-  chargeCounts.pve = 0;
-  chargeCounts.conflict = 0;
+  chargeCounts.pve = initialCharges('pve');
+  chargeCounts.conflict = initialCharges('conflict');
   for (const carts of grouped.values()) for (const cart of carts) {
     cart.day = Math.floor(chargeCounts[cart.channel]++ / 3) + 1;
     pickups.push(cart);
   }
   pickups.sort((left, right) => left.day - right.day);
+  pickups.unshift(...prefix);
   // Keep delivery demand before acquired rewards, so consumers can calculate
   // true reward surplus even when an intermediate is partly traded and crafted.
   const requirements = [...calculation.raw, ...calculation.crafted.filter((need) => rewards.has(need.itemId))]

@@ -299,3 +299,50 @@ test('normalizes proportional batches and preserves shared stock before lower-ti
   expect(result.rewards).toEqual([{ itemId: 'ingot', count: 2 }]);
   expect(result.unresolved).toEqual([]);
 });
+
+
+describe('protected trade continuations', () => {
+  test('keeps mixed prefix loads intact and starts both channels at the global last day', () => {
+    const original = plan({}, new Set(['stone']), true, 30);
+    const prefix = structuredClone(original.runs.slice(0, 13));
+    expect(prefix.at(-1)!.day).toBe(3);
+    const costs = prefix.reduce((total, run) => total + run.loads.reduce((slots, load) => slots + load.packs * 10, 0), 0);
+    const inputs = [{ itemId: 'stone', required: costs, owned: 0, farm: costs }];
+    const continued = planTrades(catalog, network(), 'tool', 30, {}, new Set(['stone']), {
+      includeConflict: true, continuation: { runs: prefix, inputs, bonusRewards: [{ itemId: 'lumber', count: 1 }] },
+    });
+    expect(continued.runs.slice(0, prefix.length)).toEqual(prefix);
+    expect(continued.runs.slice(prefix.length).every(run => run.day >= 3)).toBe(true);
+    const occupancy = new Map<string, number>();
+    for (const run of continued.runs) {
+      expect(run.loads.reduce((total, load) => total + load.packs, 0)).toBeLessThanOrEqual(7);
+      const key = `${run.day}:${run.channel}`;
+      occupancy.set(key, (occupancy.get(key) ?? 0) + 1);
+    }
+    expect([...occupancy.values()].every(count => count <= 3)).toBe(true);
+    expect(continued.rewards.find(reward => reward.itemId === 'lumber')!.count).toBe(
+      continued.runs.flatMap(run => run.loads).filter(load => load.rewardItemId === 'lumber').reduce((total, load) => total + load.received, 0) + 1,
+    );
+  });
+  test('bonus craft stock cannot fund a pack even when it is the required material', () => {
+    const result = planTrades(catalog, network(), 'tool', 1, {}, new Set(), {
+      continuation: { runs: [], inputs: [], bonusRewards: [{ itemId: 'stone', count: 1000 }] },
+    });
+    expect(result.runs).toEqual([]);
+    expect(result.inputs).toEqual([]);
+    expect(result.unresolved.some(need => need.itemId === 'logs')).toBe(true);
+  });
+  test('rejects overflow when a protected day seeds channel budgets', () => {
+    const original = plan({}, new Set(['stone']));
+    const run = { ...original.runs[0], day: Number.MAX_SAFE_INTEGER };
+    expect(() => planTrades(catalog, network(), 'tool', 2, {}, new Set(['stone']), {
+      continuation: { runs: [run], inputs: original.inputs, bonusRewards: [] },
+    })).toThrow('safe integer');
+  });
+  test('prefix packs count toward the 10000 limit', () => {
+    const run = plan({}, new Set(['stone'])).runs[0];
+    expect(() => planTrades(catalog, network(), 'tool', 1, {}, new Set(['stone']), {
+      continuation: { runs: Array.from({ length: 1429 }, () => run), inputs: [], bonusRewards: [] },
+    })).toThrow('10000');
+  });
+});

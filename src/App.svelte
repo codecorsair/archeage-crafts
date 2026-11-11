@@ -13,7 +13,7 @@
   import { craftingPlan, gatheringPlan } from './lib/crafting-plan';
   import { parseInventory } from './lib/inventory';
   import { craftingTargets, PROFESSIONS } from './lib/recipe-policy';
-  import { attachTradePlan, createPlan, projectPlanInventory, toggleCraftComplete, toggleGatheringComplete, toggleRunComplete, updatePlanInputs, type CraftPlan } from './lib/plans';
+  import { attachTradePlan, createPlan, projectPlanStock, setTradeBonus, toggleCraftComplete, toggleGatheringComplete, toggleRunComplete, updatePlanInputs, type CraftPlan } from './lib/plans';
   import { LEGACY_STATE_KEYS, parseWorkbenchState, WORKBENCH_STATE_KEY } from './lib/workbench-state';
   import { planTrades, type TradeCatalog, type TradePlan } from './lib/trading';
   import { buildFineArcheumPreset } from './lib/trade-presets';
@@ -49,7 +49,8 @@
   const calculation = $derived.by(() => {
     if (!draft) return { result: null, actions: [], error: '' };
     try {
-      const result = calculate(catalog, draft.recipeId, draft.quantity, projectPlanInventory(draft), { master: draft.settings.master });
+      const stock = projectPlanStock(draft);
+      const result = calculate(catalog, draft.recipeId, draft.quantity, stock.craft, { master: draft.settings.master, masterInventory: stock.owned });
       return { result, actions: craftingPlan(catalog, result), error: '' };
     } catch (cause) {
       return { result: null, actions: [], error: cause instanceof Error ? cause.message : 'Could not calculate this plan.' };
@@ -191,11 +192,24 @@
     return saveCandidate($state.snapshot(draft));
   }
 
+  function changeTradeBonus(runIndex: number, loadIndex: number, amount: number): boolean {
+    if (!draft) return false;
+    try {
+      if (!Number.isSafeInteger(amount) || amount < 0) throw new Error('Extra received must be a non-negative whole number within the safe integer range.');
+      draft = setTradeBonus(catalog, availableTradeData(draft.settings.tradeAccess), $state.snapshot(draft), runIndex, loadIndex, amount);
+      error = '';
+      return true;
+    } catch (cause) {
+      error = cause instanceof Error ? cause.message : 'Could not recalculate trade bonuses.';
+      return false;
+    }
+  }
+
   function applyTradePreset(includeConflict: boolean) {
     if (!draft) return;
     try {
       const candidate = buildFineArcheumPreset(catalog, $state.snapshot(draft), includeConflict);
-      if (draft.completedGathering.length || draft.completedCrafts.length || draft.trade?.completedRuns.length) {
+      if (draft.completedGathering.length || draft.completedCrafts.length || draft.trade?.completedRuns.length || draft.trade?.bonus) {
         modal = { kind: 'preset', candidate };
       } else {
         draft = candidate;
@@ -327,11 +341,12 @@
           {#if draft.trade?.stale}
             <p class="notice">These runs are outdated. Their rewards are paused until rebuilt.</p>
             <button type="button" class="primary" onclick={reviewTrades}>Review rebuild</button>
-            <details class="previous-runs"><summary>Previous runs and progress</summary><TradeRunGuide {catalog} tradeData={draft.trade.data} plan={draft.trade.plan} completedRuns={draft.trade.completedRuns} disabled /></details>
+            <details class="previous-runs"><summary>Previous runs and progress</summary><TradeRunGuide {catalog} tradeData={draft.trade.data} plan={draft.trade.plan} completedRuns={draft.trade.completedRuns} bonus={draft.trade.bonus} disabled /></details>
           {:else if draft.trade}
             {#if draft.trade.plan.runs.length}
-              <p class="phase-note">{draft.trade.completedRuns.length} of {draft.trade.plan.runs.length} runs complete · {draft.trade.plan.days} {draft.trade.plan.days === 1 ? 'day' : 'days'}</p>
-              <TradeRunGuide {catalog} tradeData={draft.trade.data} plan={draft.trade.plan} completedRuns={draft.trade.completedRuns} onToggle={index => { if (draft) draft = toggleRunComplete(draft, index); }} />
+              <p class="phase-note" aria-live="polite">{draft.trade.completedRuns.length} of {draft.trade.plan.runs.length} runs complete · {draft.trade.plan.days} {draft.trade.plan.days === 1 ? 'day' : 'days'}</p>
+              <p class="phase-note">Enter only bonus items. Recording extras keeps that run and earlier runs fixed.</p>
+              <TradeRunGuide {catalog} tradeData={draft.trade.data} plan={draft.trade.plan} completedRuns={draft.trade.completedRuns} bonus={draft.trade.bonus} onBonusChange={changeTradeBonus} onToggle={index => { if (draft) draft = toggleRunComplete(draft, index); }} />
             {:else}<p class="note">No trade runs needed with this configuration.</p>{/if}
           {:else}
             <p class="note">No trade runs configured.</p>
@@ -378,17 +393,17 @@
     <div class="button-row"><button class="primary" onclick={() => leaveDraft(true)}>Save & continue</button><button onclick={() => leaveDraft(false)}>Discard changes</button><button onclick={() => modal = null}>Cancel</button></div>
   {:else if modal?.kind === 'rebuild'}
     <h2 id="confirmation-title">Review trade runs</h2><p>{modal.plan.runs.length} {modal.plan.runs.length === 1 ? 'run' : 'runs'} · {modal.plan.days} {modal.plan.days === 1 ? 'day' : 'days'}</p>
-    {#if draft?.trade || draft?.completedGathering.length || draft?.completedCrafts.length}<p class="notice">Replacing runs resets execution progress. Your inventory is unchanged.</p>{/if}
+    {#if draft?.trade || draft?.completedGathering.length || draft?.completedCrafts.length}<p class="notice">Replacing runs clears completion, recorded extras and protected history. Your inventory is unchanged.</p>{/if}
     <TradeRunGuide {catalog} tradeData={modal.data} plan={modal.plan} disabled />
     {#if !modal.plan.runs.length}<p class="note">No runs can improve this plan with the current stock, access and farming selections.</p>{/if}
     <div class="button-row"><button class="primary" onclick={acceptModal}>Use these runs</button><button onclick={() => modal = null}>Cancel</button></div>
   {:else if modal?.kind === 'preset'}
     <h2 id="confirmation-title">Apply Fine Archeum preset?</h2>
     <p>Farm Fine Archeum with {modal.candidate.settings.includeConflict ? 'PvE + PvP' : 'PvE only'}. Pioneer access will be enabled.</p>
-    <p class="notice">Existing gathering, trade and craft completion will be cleared. Your inventory is unchanged.</p>
+    <p class="notice">Existing completion, recorded extras and protected history will be cleared. Your inventory is unchanged.</p>
     <div class="button-row"><button class="primary" onclick={acceptModal}>Apply preset</button><button onclick={() => modal = null}>Cancel</button></div>
   {:else if modal?.kind === 'remove-trades'}
-    <h2 id="confirmation-title">Remove trade runs?</h2><p>Crafting will use this plan's inventory only. Execution progress will be cleared.</p><div class="button-row"><button class="primary" onclick={acceptModal}>Remove runs</button><button onclick={() => modal = null}>Cancel</button></div>
+    <h2 id="confirmation-title">Remove trade runs?</h2><p>Crafting will use this plan's inventory only. Completion, recorded extras and protected history will be cleared.</p><div class="button-row"><button class="primary" onclick={acceptModal}>Remove runs</button><button onclick={() => modal = null}>Cancel</button></div>
   {:else if modal?.kind === 'delete'}
     <h2 id="confirmation-title">{saved ? 'Delete this plan?' : 'Discard this plan?'}</h2><p>{draft?.name}. Other plans are not affected.</p>{#if error}<p class="error" role="alert">{error}</p>{/if}<div class="button-row"><button class="danger" onclick={acceptModal}>{saved ? 'Delete plan' : 'Discard plan'}</button><button onclick={() => modal = null}>Cancel</button></div>
   {/if}
