@@ -8,12 +8,11 @@
     tradeData: TradeCatalog;
     selected: string[];
     allowed?: ReadonlySet<string>;
-    addOnly?: boolean;
     onChange: (ids: string[]) => void;
     disabled?: boolean;
   };
 
-  let { catalog, tradeData, selected, allowed, addOnly = false, onChange, disabled = false }: Props = $props();
+  let { catalog, tradeData, selected, allowed, onChange, disabled = false }: Props = $props();
   let query = $state('');
   let open = $state(false);
   let active = $state(0);
@@ -62,7 +61,7 @@
     {#each selected as id (id)}
       <span class="chip">
         {items.get(id)?.name ?? id}
-        {#if !addOnly}<button type="button" disabled={disabled} aria-label={`Remove ${items.get(id)?.name ?? id}`} onclick={() => onChange(selected.filter((value) => value !== id))}>×</button>{/if}
+        <button type="button" disabled={disabled} aria-label={`Remove ${items.get(id)?.name ?? id}`} onclick={() => onChange(selected.filter((value) => value !== id))}>×</button>
       </span>
     {/each}
   </div>
