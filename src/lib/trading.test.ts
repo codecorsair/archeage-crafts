@@ -149,7 +149,7 @@ describe('direct trade planning', () => {
     expect(() => plan({}, new Set(['stone']), false, 100000)).toThrow('exceeds');
   });
 
-  test('real Fine Lumber scenario reserves owned archeum and exposes soul fragment shortage', () => {
+  test('refreshed Fine Lumber reserves owned archeum and has no soul fragment shortage', () => {
     const inventory = { '70203004': 40 };
     const farmable = new Set(['70203004']);
     const pve = planTrades(realCatalog, tradeData, '60207111', 10, inventory, farmable);
@@ -160,7 +160,7 @@ describe('direct trade planning', () => {
     expect(both.days).toBe(1);
     expect(pve.runs.flatMap((pickup) => pickup.loads).reduce((total, load) => total + load.packs, 0)).toBe(30);
     expect(pve.inputs).toEqual([{ itemId: '70203004', required: 270, owned: 40, farm: 230 }]);
-    expect(pve.unresolved).toEqual([{ itemId: '70200010', count: 30 }]);
+    expect(pve.unresolved).toEqual([]);
     expect(inventory).toEqual({ '70203004': 40 });
   });
 
@@ -169,7 +169,7 @@ describe('direct trade planning', () => {
     expect(result.runs).toHaveLength(429);
     expect(result.days).toBe(143);
     expect(result.inputs).toEqual([{ itemId: '70203004', required: 27000, owned: 40, farm: 26960 }]);
-    expect(result.unresolved).toEqual([{ itemId: '70200010', count: 3000 }]);
+    expect(result.unresolved).toEqual([]);
   });
 
   test('Rare and Heroic boss routes use confirmed 3-for-3 and 1-for-1 packs', () => {
@@ -215,12 +215,12 @@ describe('direct trade planning', () => {
     }
     expect(sources.size).toBe(36); // 21 basic items and 15 boss drops.
     const route = (source: string, target: string) => tradeData.packs.find((pack) => byId.get(pack.materials[0].itemId)?.name === source && pack.deliveries.some((delivery) => delivery.rewards.pve.kind === 'material' && byId.get(delivery.rewards.pve.itemId)?.name === target));
-    expect(route('Wind Blade Claw', 'Undying Flame')?.originId).toBe('waterdrift');
+    expect(route('Wind Blade Claws', 'Undying Flame')?.originId).toBe('waterdrift');
     expect(route('Brutal Nightmare', 'Constellation Horn')?.originId).toBe('shadowpath-temple');
-    expect(route('Fine Lumber', 'Wind Blade Claw')).toBeUndefined();
+    expect(route('Fine Lumber', 'Wind Blade Claws')).toBeUndefined();
     expect(route('Standard Lumber', 'Fine Additive')).toBeUndefined();
     expect(route('Standard Archeum', 'Standard Stone')).toBeUndefined();
-    expect(route('Wind Blade Claw', 'Brutal Nightmare')).toBeUndefined();
+    expect(route('Wind Blade Claws', 'Brutal Nightmare')).toBeUndefined();
     expect(route('Superior Lumber', 'Superior Ingot')?.originId).toBe('seaglass-harbor');
     const result = planTrades(realCatalog, tradeData, realCatalog.recipes[0].id, 1, {}, new Set());
     expect(result.runs).toHaveLength(0);

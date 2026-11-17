@@ -1,6 +1,6 @@
 # ArcheAge Craft
 
-A local-first ArcheAge Chronicles crafting calculator using the recipes listed on [ArcheAge World](https://archeageworld.com/en/crafting.html).
+A local-first ArcheAge Chronicles crafting calculator using workbench recipes from [Raiddex](https://raiddex.com/en/archeage-chronicles/recipes), with retained cooking data and artwork from [ArcheAge World](https://archeageworld.com/en/crafting.html).
 
 ## Hosted app
 
@@ -86,17 +86,19 @@ Protected runs and their pack definitions remain stable while extras recalculate
 
 ## Data and limitations
 
-The complete bundled snapshot is in `src/data/catalog.json`; its source URL, retrieval time, counts, and source SHA-256 are in `src/data/source.json`. Data refresh tools, development scripts and design notes are maintained locally and are not included in this repository. The app and deployment use the checked-in snapshot without fetching recipe data from the source site. Recipes retain source order, IDs, English subtype labels, and per-craft currency costs. Optional item details include source description, stats, level, type, and weight. Cooking outputs with source item ID 0 receive distinct recipe-based IDs.
+The bundled snapshot is in `src/data/catalog.json`; source URLs, retrieval times, counts, and source SHA-256 hashes are in `src/data/source.json`. All 238 workbench recipe variants were checked against Raiddex's 17 November 2026 capture: 79 variants changed ingredients, Gold cost, or output name. Five item renames were confirmed by explicit former-name notices. Existing recipe/item IDs, recipe order, batch outputs, profession keys and Master routes are preserved. The 117 cooking recipes, item detail metadata and artwork remain from the 8 November ArcheAge World snapshot, except for those five verified item names. Data refresh tools, development scripts and design notes are maintained locally and are not included in this repository. The app and deployment use the checked-in snapshot without fetching recipe data at runtime. Optional item details include description, stats, level, type, and weight; these were not refreshed from Raiddex. Cooking outputs with source item ID 0 retain distinct recipe-based IDs.
 
 Item and category artwork is bundled under `public/icons/`, not hotlinked at runtime. Existing source placeholder art is kept as provided. Missing or failed images render a fixed-size framed fallback without hiding item names. The theme follows ArcheAge World's restrained charcoal, ivory, and antique-gold crafting interface. No animated backgrounds or external fonts are used.
 
 - “Raw” means no recipe is available for that ingredient in this dataset. It may be a gathered, dropped, or otherwise acquired item.
-- The source contains cooking ingredient categories rather than specific interchangeable items. They remain separate from similarly named workbench materials.
-- Eighteen cooking entries have no ingredient data. They remain searchable but cannot produce a reliable calculation.
+- Retained cooking data contains ingredient categories rather than specific interchangeable items. They remain separate from similarly named workbench materials.
+- Cooking was not refreshed: Raiddex exposes alternative ingredient groups but no stable recipe IDs, ingredient quantities, output quantities or costs, and reports that cooking is not currently craftable in Early Access because there is no cooking station. Existing cooking calculations are unverified against that update; Raiddex's additional Unknown Dish entry was not added.
+- Eighteen retained cooking entries have no ingredient data. They remain searchable but cannot produce a reliable calculation.
 - Cyclic ingredient routes and unsafe quantities are rejected explicitly.
 - Only the explicit per-plan Master and company-access rules are modeled. Other proficiency/tool restrictions, currency and market costs are not included in material totals.
+- Existing saved plans keep their item IDs, inventory and progress. Crafting requirements use the refreshed recipes, but previously saved trade runs remain historical snapshots and should be reviewed and rebuilt after a recipe update.
 - Plans are browser-local. Clearing site data removes them; blocked writes or corrupt storage are reported without presenting an unsaved draft as saved.
 
-Recipe data, names, and item artwork belong to their respective owners. Source: ArcheAge World / KompY; this is an unofficial fan tool, not affiliated with the game or source site. No data redistribution license has been assumed. Review source permissions before public redistribution or deployment.
+Recipe data, names, and item artwork belong to their respective owners. Sources: Raiddex and ArcheAge World / KompY; this is an unofficial fan tool, not affiliated with the game or source sites. No data redistribution license has been assumed. Review source permissions before public redistribution or deployment.
 
 Domain terms are in `CONTEXT.md`. Local documentation, development scripts, worktrees, environment files and generated output are excluded by `.gitignore`.

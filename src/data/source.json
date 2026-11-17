@@ -1,10 +1,59 @@
 {
-  "page": "https://archeageworld.com/en/crafting.html",
-  "source": "https://archeageworld.com/data/crafteo-data.js",
+  "page": "https://raiddex.com/en/archeage-chronicles/recipes",
+  "source": "https://raiddex.com/en/archeage-chronicles/crafting",
   "iconBase": "https://archeageworld.com/img/icons/",
-  "sha256": "7839d2d63129e086ac91556dfc40d169dff2eea2f35650aac8659bd032d4f3b2",
-  "importedAt": "2026-11-08T08:10:08.594Z",
+  "sha256": "67ea915cdcdada79354ab3ae60d84403a595e9bc2af9d6679458fefa278860d6",
+  "importedAt": "2026-11-17T15:20:39.343Z",
   "recipes": 355,
   "items": 414,
-  "icons": 281
+  "icons": 281,
+  "workbenchRecipes": 238,
+  "retainedCookingRecipes": 117,
+  "retainedCookingAndItemDetailsFrom": {
+    "page": "https://archeageworld.com/en/crafting.html",
+    "source": "https://archeageworld.com/data/crafteo-data.js",
+    "iconBase": "https://archeageworld.com/img/icons/",
+    "sha256": "7839d2d63129e086ac91556dfc40d169dff2eea2f35650aac8659bd032d4f3b2",
+    "importedAt": "2026-11-08T08:10:08.594Z",
+    "recipes": 355,
+    "items": 414,
+    "icons": 281
+  },
+  "itemRenames": [
+    {
+      "itemId": "12701101",
+      "formerName": "Golden Tree Warden's Hat",
+      "name": "Golden Tree Warden's Hood",
+      "source": "https://raiddex.com/en/archeage-chronicles/items/golden-tree-wardens-hood",
+      "sha256": "962291e1963c912816d4f462d1f82f8853bb639ccf1f83dc6f8045e178078605"
+    },
+    {
+      "itemId": "12703401",
+      "formerName": "Garden's Mirage Shoes",
+      "name": "Garden's Mirage Slippers",
+      "source": "https://raiddex.com/en/archeage-chronicles/items/gardens-mirage-slippers",
+      "sha256": "505199787a7376ac450468b7570f620f465943ebf29fb12fdd6726fab4d8e062"
+    },
+    {
+      "itemId": "13102202",
+      "formerName": "Rift Defender's Longbow",
+      "name": "Rift Defender's Crossbow",
+      "source": "https://raiddex.com/en/archeage-chronicles/items/rift-defenders-crossbow",
+      "sha256": "00bdc8540610d08e796a5d687ee65f718221bd5cc19ae342c0c743dfb3121d5e"
+    },
+    {
+      "itemId": "70300001",
+      "formerName": "Wind Blade Claw",
+      "name": "Wind Blade Claws",
+      "source": "https://raiddex.com/en/archeage-chronicles/items/wind-blade-claws",
+      "sha256": "8365acf71d64ffb47544ed1550ff7201b0c5a7e7a445f70dd41be75b36da961e"
+    },
+    {
+      "itemId": "70402004",
+      "formerName": "Bellflower Dewdrop",
+      "name": "Evening Dewdrop",
+      "source": "https://raiddex.com/en/archeage-chronicles/items/evening-dewdrop",
+      "sha256": "761afa8ca141086fd8036f21457f8630f0fbc04486cb65ffe078df18b82fa6f8"
+    }
+  ]
 }

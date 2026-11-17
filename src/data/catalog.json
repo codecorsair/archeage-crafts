@@ -264,7 +264,7 @@
     },
     {
       "id": "70402004",
-      "name": "Bellflower Dewdrop",
+      "name": "Evening Dewdrop",
       "icon": "ui_item_contents_craftmaterial_petal_04.webp",
       "grade": "Heroic"
     },
@@ -1451,7 +1451,7 @@
     },
     {
       "id": "13102202",
-      "name": "Rift Defender's Longbow",
+      "name": "Rift Defender's Crossbow",
       "description": "Coming Soon - Cannot be equipped yet.\n\nA crossbow forged with ancient techniques specifically to repel the Crimson Rift.",
       "stats": [
         {
@@ -2547,7 +2547,7 @@
     },
     {
       "id": "70300001",
-      "name": "Wind Blade Claw",
+      "name": "Wind Blade Claws",
       "icon": "ui_item_craftmaterial_windblade_01.webp",
       "grade": "Rare"
     },
@@ -2727,7 +2727,7 @@
     },
     {
       "id": "12701101",
-      "name": "Golden Tree Warden's Hat",
+      "name": "Golden Tree Warden's Hood",
       "description": "Legend tells that the four demigods, having fulfilled their charge to tend the primordial world, returned to the Garden of the Gods. In their absence, a Goldroot Tree blossomed in each of their places.",
       "stats": [
         {
@@ -3571,7 +3571,7 @@
     },
     {
       "id": "12703401",
-      "name": "Garden's Mirage Shoes",
+      "name": "Garden's Mirage Slippers",
       "description": "To find those like himself, Yon created a Garden steeped in memory magic that recalls past lives. Shaped by his obsession, the garden appears as fragile and fleeting as a mirage.",
       "stats": [
         {
@@ -6044,13 +6044,9 @@
         {
           "itemId": "70108001",
           "count": 15
-        },
-        {
-          "itemId": "70109003",
-          "count": 5
         }
       ],
-      "cost": 100,
+      "cost": 125,
       "costType": "Gold",
       "stationIcon": "ui_skill_icon_milling.webp",
       "group": "Food"
@@ -6261,13 +6257,9 @@
         {
           "itemId": "70108001",
           "count": 90
-        },
-        {
-          "itemId": "70109003",
-          "count": 30
         }
       ],
-      "cost": 300,
+      "cost": 450,
       "costType": "Gold",
       "stationIcon": "ui_skill_icon_milling.webp",
       "group": "Food"
@@ -6303,13 +6295,9 @@
         {
           "itemId": "70108001",
           "count": 450
-        },
-        {
-          "itemId": "70109003",
-          "count": 150
         }
       ],
-      "cost": 1500,
+      "cost": 2250,
       "costType": "Gold",
       "stationIcon": "ui_skill_icon_milling.webp",
       "group": "Food"
@@ -6345,17 +6333,9 @@
         {
           "itemId": "70102003",
           "count": 3
-        },
-        {
-          "itemId": "70109003",
-          "count": 5
-        },
-        {
-          "itemId": "70100005",
-          "count": 5
         }
       ],
-      "cost": 100,
+      "cost": 125,
       "costType": "Gold",
       "stationIcon": "ui_skill_icon_carpentry.webp",
       "group": "Mixtures"
@@ -6374,10 +6354,6 @@
         {
           "itemId": "70208003",
           "count": 9
-        },
-        {
-          "itemId": "70200010",
-          "count": 3
         }
       ],
       "cost": 300,
@@ -6424,17 +6400,9 @@
         {
           "itemId": "70102003",
           "count": 18
-        },
-        {
-          "itemId": "70109003",
-          "count": 30
-        },
-        {
-          "itemId": "70100005",
-          "count": 30
         }
       ],
-      "cost": 300,
+      "cost": 450,
       "costType": "Gold",
       "stationIcon": "ui_skill_icon_carpentry.webp",
       "group": "Mixtures"
@@ -6449,17 +6417,9 @@
         {
           "itemId": "70107001",
           "count": 3
-        },
-        {
-          "itemId": "70109003",
-          "count": 5
-        },
-        {
-          "itemId": "70100005",
-          "count": 5
         }
       ],
-      "cost": 100,
+      "cost": 125,
       "costType": "Gold",
       "stationIcon": "ui_skill_icon_carpentry.webp",
       "group": "Lumber"
@@ -6478,10 +6438,6 @@
         {
           "itemId": "70202003",
           "count": 9
-        },
-        {
-          "itemId": "70200010",
-          "count": 3
         }
       ],
       "cost": 300,
@@ -6528,17 +6484,9 @@
         {
           "itemId": "70107001",
           "count": 18
-        },
-        {
-          "itemId": "70109003",
-          "count": 30
-        },
-        {
-          "itemId": "70100005",
-          "count": 30
         }
       ],
-      "cost": 300,
+      "cost": 450,
       "costType": "Gold",
       "stationIcon": "ui_skill_icon_carpentry.webp",
       "group": "Lumber"
@@ -6557,10 +6505,6 @@
         {
           "itemId": "70208003",
           "count": 27
-        },
-        {
-          "itemId": "70200010",
-          "count": 9
         }
       ],
       "cost": 450,
@@ -6578,17 +6522,9 @@
         {
           "itemId": "70102003",
           "count": 90
-        },
-        {
-          "itemId": "70109003",
-          "count": 150
-        },
-        {
-          "itemId": "70100005",
-          "count": 150
         }
       ],
-      "cost": 1500,
+      "cost": 2250,
       "costType": "Gold",
       "stationIcon": "ui_skill_icon_carpentry.webp",
       "group": "Mixtures"
@@ -6624,10 +6560,6 @@
         {
           "itemId": "70202003",
           "count": 27
-        },
-        {
-          "itemId": "70200010",
-          "count": 9
         }
       ],
       "cost": 450,
@@ -6645,17 +6577,9 @@
         {
           "itemId": "70107001",
           "count": 90
-        },
-        {
-          "itemId": "70109003",
-          "count": 150
-        },
-        {
-          "itemId": "70100005",
-          "count": 150
         }
       ],
-      "cost": 1500,
+      "cost": 2250,
       "costType": "Gold",
       "stationIcon": "ui_skill_icon_carpentry.webp",
       "group": "Lumber"
@@ -6691,10 +6615,6 @@
         {
           "itemId": "70208003",
           "count": 135
-        },
-        {
-          "itemId": "70200010",
-          "count": 45
         }
       ],
       "cost": 2250,
@@ -6716,10 +6636,6 @@
         {
           "itemId": "70202003",
           "count": 135
-        },
-        {
-          "itemId": "70200010",
-          "count": 45
         }
       ],
       "cost": 2250,
@@ -6737,17 +6653,9 @@
         {
           "itemId": "70102002",
           "count": 3
-        },
-        {
-          "itemId": "70109003",
-          "count": 5
-        },
-        {
-          "itemId": "70100005",
-          "count": 5
         }
       ],
-      "cost": 100,
+      "cost": 125,
       "costType": "Gold",
       "stationIcon": "ui_skill_icon_trimming.webp",
       "group": "Textiles"
@@ -6766,10 +6674,6 @@
         {
           "itemId": "70202003",
           "count": 9
-        },
-        {
-          "itemId": "70200008",
-          "count": 3
         }
       ],
       "cost": 300,
@@ -6816,17 +6720,9 @@
         {
           "itemId": "70102002",
           "count": 18
-        },
-        {
-          "itemId": "70109003",
-          "count": 30
-        },
-        {
-          "itemId": "70100005",
-          "count": 30
         }
       ],
-      "cost": 300,
+      "cost": 450,
       "costType": "Gold",
       "stationIcon": "ui_skill_icon_trimming.webp",
       "group": "Textiles"
@@ -6841,17 +6737,9 @@
         {
           "itemId": "70108002",
           "count": 15
-        },
-        {
-          "itemId": "70109003",
-          "count": 5
-        },
-        {
-          "itemId": "70100005",
-          "count": 5
         }
       ],
-      "cost": 100,
+      "cost": 125,
       "costType": "Gold",
       "stationIcon": "ui_skill_icon_trimming.webp",
       "group": "Leather"
@@ -6870,10 +6758,6 @@
         {
           "itemId": "70202003",
           "count": 9
-        },
-        {
-          "itemId": "70200008",
-          "count": 3
         }
       ],
       "cost": 300,
@@ -6924,10 +6808,6 @@
         {
           "itemId": "70202003",
           "count": 27
-        },
-        {
-          "itemId": "70200008",
-          "count": 9
         }
       ],
       "cost": 450,
@@ -6945,17 +6825,9 @@
         {
           "itemId": "70102002",
           "count": 90
-        },
-        {
-          "itemId": "70109003",
-          "count": 150
-        },
-        {
-          "itemId": "70100005",
-          "count": 150
         }
       ],
-      "cost": 1500,
+      "cost": 2250,
       "costType": "Gold",
       "stationIcon": "ui_skill_icon_trimming.webp",
       "group": "Textiles"
@@ -6991,10 +6863,6 @@
         {
           "itemId": "70202003",
           "count": 135
-        },
-        {
-          "itemId": "70200008",
-          "count": 45
         }
       ],
       "cost": 2250,
@@ -7012,17 +6880,9 @@
         {
           "itemId": "70108002",
           "count": 90
-        },
-        {
-          "itemId": "70109003",
-          "count": 30
-        },
-        {
-          "itemId": "70100005",
-          "count": 30
         }
       ],
-      "cost": 300,
+      "cost": 450,
       "costType": "Gold",
       "stationIcon": "ui_skill_icon_trimming.webp",
       "group": "Leather"
@@ -7041,10 +6901,6 @@
         {
           "itemId": "70202003",
           "count": 27
-        },
-        {
-          "itemId": "70200008",
-          "count": 9
         }
       ],
       "cost": 450,
@@ -7062,17 +6918,9 @@
         {
           "itemId": "70108002",
           "count": 450
-        },
-        {
-          "itemId": "70109003",
-          "count": 150
-        },
-        {
-          "itemId": "70100005",
-          "count": 150
         }
       ],
-      "cost": 1500,
+      "cost": 2250,
       "costType": "Gold",
       "stationIcon": "ui_skill_icon_trimming.webp",
       "group": "Leather"
@@ -7091,10 +6939,6 @@
         {
           "itemId": "70202003",
           "count": 135
-        },
-        {
-          "itemId": "70200008",
-          "count": 45
         }
       ],
       "cost": 2250,
@@ -7112,17 +6956,9 @@
         {
           "itemId": "70103004",
           "count": 3
-        },
-        {
-          "itemId": "70109003",
-          "count": 5
-        },
-        {
-          "itemId": "72000016",
-          "count": 5
         }
       ],
-      "cost": 100,
+      "cost": 125,
       "costType": "Gold",
       "stationIcon": "ui_skill_icon_alchemy.webp",
       "group": "Gems"
@@ -7141,10 +6977,6 @@
         {
           "itemId": "70202003",
           "count": 9
-        },
-        {
-          "itemId": "70200009",
-          "count": 3
         }
       ],
       "cost": 300,
@@ -7216,17 +7048,9 @@
         {
           "itemId": "70108003",
           "count": 15
-        },
-        {
-          "itemId": "70109003",
-          "count": 5
-        },
-        {
-          "itemId": "72000016",
-          "count": 5
         }
       ],
-      "cost": 100,
+      "cost": 125,
       "costType": "Gold",
       "stationIcon": "ui_skill_icon_alchemy.webp",
       "group": "Bones"
@@ -7245,10 +7069,6 @@
         {
           "itemId": "70202003",
           "count": 9
-        },
-        {
-          "itemId": "70200009",
-          "count": 3
         }
       ],
       "cost": 300,
@@ -7291,17 +7111,9 @@
         {
           "itemId": "70103004",
           "count": 18
-        },
-        {
-          "itemId": "70109003",
-          "count": 30
-        },
-        {
-          "itemId": "72000016",
-          "count": 30
         }
       ],
-      "cost": 300,
+      "cost": 450,
       "costType": "Gold",
       "stationIcon": "ui_skill_icon_alchemy.webp",
       "group": "Gems"
@@ -7320,10 +7132,6 @@
         {
           "itemId": "70202003",
           "count": 27
-        },
-        {
-          "itemId": "70200009",
-          "count": 9
         }
       ],
       "cost": 450,
@@ -7341,17 +7149,9 @@
         {
           "itemId": "70103004",
           "count": 90
-        },
-        {
-          "itemId": "70109003",
-          "count": 150
-        },
-        {
-          "itemId": "72000016",
-          "count": 150
         }
       ],
-      "cost": 1500,
+      "cost": 2250,
       "costType": "Gold",
       "stationIcon": "ui_skill_icon_alchemy.webp",
       "group": "Gems"
@@ -7366,17 +7166,9 @@
         {
           "itemId": "70108003",
           "count": 90
-        },
-        {
-          "itemId": "70109003",
-          "count": 30
-        },
-        {
-          "itemId": "72000016",
-          "count": 30
         }
       ],
-      "cost": 300,
+      "cost": 450,
       "costType": "Gold",
       "stationIcon": "ui_skill_icon_alchemy.webp",
       "group": "Bones"
@@ -7395,10 +7187,6 @@
         {
           "itemId": "70202003",
           "count": 27
-        },
-        {
-          "itemId": "70200009",
-          "count": 9
         }
       ],
       "cost": 450,
@@ -7416,17 +7204,9 @@
         {
           "itemId": "70108003",
           "count": 450
-        },
-        {
-          "itemId": "70109003",
-          "count": 150
-        },
-        {
-          "itemId": "72000016",
-          "count": 150
         }
       ],
-      "cost": 1500,
+      "cost": 2250,
       "costType": "Gold",
       "stationIcon": "ui_skill_icon_alchemy.webp",
       "group": "Bones"
@@ -7462,10 +7242,6 @@
         {
           "itemId": "70202003",
           "count": 135
-        },
-        {
-          "itemId": "70200009",
-          "count": 45
         }
       ],
       "cost": 2250,
@@ -7487,10 +7263,6 @@
         {
           "itemId": "70202003",
           "count": 135
-        },
-        {
-          "itemId": "70200009",
-          "count": 45
         }
       ],
       "cost": 2250,
@@ -7508,17 +7280,9 @@
         {
           "itemId": "70103001",
           "count": 3
-        },
-        {
-          "itemId": "70109003",
-          "count": 5
-        },
-        {
-          "itemId": "72000016",
-          "count": 5
         }
       ],
-      "cost": 100,
+      "cost": 125,
       "costType": "Gold",
       "stationIcon": "ui_skill_icon_smelting.webp",
       "group": "Stone"
@@ -7537,10 +7301,6 @@
         {
           "itemId": "70202003",
           "count": 9
-        },
-        {
-          "itemId": "70200011",
-          "count": 3
         }
       ],
       "cost": 300,
@@ -7587,17 +7347,9 @@
         {
           "itemId": "70103001",
           "count": 18
-        },
-        {
-          "itemId": "70109003",
-          "count": 30
-        },
-        {
-          "itemId": "72000016",
-          "count": 30
         }
       ],
-      "cost": 300,
+      "cost": 450,
       "costType": "Gold",
       "stationIcon": "ui_skill_icon_smelting.webp",
       "group": "Stone"
@@ -7612,17 +7364,9 @@
         {
           "itemId": "70103002",
           "count": 3
-        },
-        {
-          "itemId": "70109003",
-          "count": 5
-        },
-        {
-          "itemId": "72000016",
-          "count": 5
         }
       ],
-      "cost": 100,
+      "cost": 125,
       "costType": "Gold",
       "stationIcon": "ui_skill_icon_smelting.webp",
       "group": "Metal"
@@ -7641,10 +7385,6 @@
         {
           "itemId": "70202003",
           "count": 9
-        },
-        {
-          "itemId": "70200011",
-          "count": 3
         }
       ],
       "cost": 300,
@@ -7691,17 +7431,9 @@
         {
           "itemId": "70103002",
           "count": 18
-        },
-        {
-          "itemId": "70109003",
-          "count": 30
-        },
-        {
-          "itemId": "72000016",
-          "count": 30
         }
       ],
-      "cost": 300,
+      "cost": 450,
       "costType": "Gold",
       "stationIcon": "ui_skill_icon_smelting.webp",
       "group": "Metal"
@@ -7720,10 +7452,6 @@
         {
           "itemId": "70202003",
           "count": 27
-        },
-        {
-          "itemId": "70200011",
-          "count": 9
         }
       ],
       "cost": 450,
@@ -7741,17 +7469,9 @@
         {
           "itemId": "70103001",
           "count": 90
-        },
-        {
-          "itemId": "70109003",
-          "count": 150
-        },
-        {
-          "itemId": "72000016",
-          "count": 150
         }
       ],
-      "cost": 1500,
+      "cost": 2250,
       "costType": "Gold",
       "stationIcon": "ui_skill_icon_smelting.webp",
       "group": "Stone"
@@ -7787,10 +7507,6 @@
         {
           "itemId": "70202003",
           "count": 27
-        },
-        {
-          "itemId": "70200011",
-          "count": 9
         }
       ],
       "cost": 450,
@@ -7808,17 +7524,9 @@
         {
           "itemId": "70103002",
           "count": 90
-        },
-        {
-          "itemId": "70109003",
-          "count": 150
-        },
-        {
-          "itemId": "72000016",
-          "count": 150
         }
       ],
-      "cost": 1500,
+      "cost": 2250,
       "costType": "Gold",
       "stationIcon": "ui_skill_icon_smelting.webp",
       "group": "Metal"
@@ -7854,10 +7562,6 @@
         {
           "itemId": "70202003",
           "count": 135
-        },
-        {
-          "itemId": "70200011",
-          "count": 45
         }
       ],
       "cost": 2250,
@@ -7879,10 +7583,6 @@
         {
           "itemId": "70202003",
           "count": 135
-        },
-        {
-          "itemId": "70200011",
-          "count": 45
         }
       ],
       "cost": 2250,
@@ -7936,7 +7636,7 @@
         },
         {
           "itemId": "70200009",
-          "count": 15
+          "count": 25
         }
       ],
       "cost": 16200,
@@ -7965,7 +7665,7 @@
         },
         {
           "itemId": "70200009",
-          "count": 15
+          "count": 25
         }
       ],
       "cost": 18000,
@@ -8114,7 +7814,7 @@
         },
         {
           "itemId": "70200010",
-          "count": 15
+          "count": 25
         }
       ],
       "cost": 18000,
@@ -8561,7 +8261,7 @@
         },
         {
           "itemId": "70200009",
-          "count": 15
+          "count": 25
         }
       ],
       "cost": 18000,
@@ -8663,7 +8363,7 @@
     {
       "id": "60211207",
       "itemId": "13102202",
-      "name": "Rift Defender's Longbow",
+      "name": "Rift Defender's Crossbow",
       "station": "Smithing",
       "output": 1,
       "materials": [
@@ -8681,7 +8381,7 @@
         },
         {
           "itemId": "70200010",
-          "count": 15
+          "count": 25
         }
       ],
       "cost": 16200,
@@ -8710,7 +8410,7 @@
         },
         {
           "itemId": "70200008",
-          "count": 15
+          "count": 25
         }
       ],
       "cost": 18000,
@@ -8830,7 +8530,7 @@
         },
         {
           "itemId": "70200009",
-          "count": 15
+          "count": 25
         }
       ],
       "cost": 16200,
@@ -8859,7 +8559,7 @@
         },
         {
           "itemId": "70200009",
-          "count": 15
+          "count": 25
         }
       ],
       "cost": 18000,
@@ -9008,7 +8708,7 @@
         },
         {
           "itemId": "70200008",
-          "count": 15
+          "count": 25
         }
       ],
       "cost": 18000,
@@ -9128,7 +8828,7 @@
         },
         {
           "itemId": "70200010",
-          "count": 15
+          "count": 25
         }
       ],
       "cost": 16200,
@@ -9306,7 +9006,7 @@
         },
         {
           "itemId": "70200010",
-          "count": 15
+          "count": 25
         }
       ],
       "cost": 18000,
@@ -9426,7 +9126,7 @@
         },
         {
           "itemId": "70200008",
-          "count": 15
+          "count": 25
         }
       ],
       "cost": 16200,
@@ -9575,7 +9275,7 @@
         },
         {
           "itemId": "70200010",
-          "count": 15
+          "count": 25
         }
       ],
       "cost": 16200,
@@ -9604,7 +9304,7 @@
         },
         {
           "itemId": "70200009",
-          "count": 15
+          "count": 25
         }
       ],
       "cost": 18000,
@@ -9691,7 +9391,7 @@
         },
         {
           "itemId": "70100005",
-          "count": 20
+          "count": 40
         },
         {
           "itemId": "70200001",
@@ -9716,7 +9416,7 @@
         },
         {
           "itemId": "70100005",
-          "count": 30
+          "count": 60
         },
         {
           "itemId": "70200001",
@@ -9741,7 +9441,7 @@
         },
         {
           "itemId": "70100005",
-          "count": 10
+          "count": 20
         },
         {
           "itemId": "70200001",
@@ -9766,7 +9466,7 @@
         },
         {
           "itemId": "70100005",
-          "count": 10
+          "count": 20
         },
         {
           "itemId": "70200001",
@@ -10013,7 +9713,7 @@
     {
       "id": "60212113",
       "itemId": "12701101",
-      "name": "Golden Tree Warden's Hat",
+      "name": "Golden Tree Warden's Hood",
       "station": "Tailoring",
       "output": 1,
       "materials": [
@@ -10155,7 +9855,7 @@
         },
         {
           "itemId": "70100005",
-          "count": 20
+          "count": 40
         },
         {
           "itemId": "70200007",
@@ -10180,7 +9880,7 @@
         },
         {
           "itemId": "70100005",
-          "count": 30
+          "count": 60
         },
         {
           "itemId": "70200007",
@@ -10205,7 +9905,7 @@
         },
         {
           "itemId": "70100005",
-          "count": 10
+          "count": 20
         },
         {
           "itemId": "70200007",
@@ -10230,7 +9930,7 @@
         },
         {
           "itemId": "70100005",
-          "count": 10
+          "count": 20
         },
         {
           "itemId": "70200007",
@@ -10619,7 +10319,7 @@
         },
         {
           "itemId": "70100005",
-          "count": 20
+          "count": 40
         },
         {
           "itemId": "70200006",
@@ -10644,7 +10344,7 @@
         },
         {
           "itemId": "70100005",
-          "count": 30
+          "count": 60
         },
         {
           "itemId": "70200006",
@@ -10669,7 +10369,7 @@
         },
         {
           "itemId": "70100005",
-          "count": 10
+          "count": 20
         },
         {
           "itemId": "70200006",
@@ -10694,7 +10394,7 @@
         },
         {
           "itemId": "70100005",
-          "count": 10
+          "count": 20
         },
         {
           "itemId": "70200006",
@@ -11040,7 +10740,7 @@
     {
       "id": "60212148",
       "itemId": "12703401",
-      "name": "Garden's Mirage Shoes",
+      "name": "Garden's Mirage Slippers",
       "station": "Tailoring",
       "output": 1,
       "materials": [
@@ -14664,6 +14364,6 @@
       "group": "Raw"
     }
   ],
-  "sourceUrl": "https://archeageworld.com/data/crafteo-data.js",
-  "importedAt": "2026-11-08T08:10:08.594Z"
+  "sourceUrl": "https://raiddex.com/en/archeage-chronicles/crafting",
+  "importedAt": "2026-11-17T15:20:39.343Z"
 }

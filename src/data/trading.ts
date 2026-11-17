@@ -7,7 +7,7 @@ const packCounts = { Grand: 9, Rare: 3, Heroic: 1 };
 const assignments = [
   { id: 'seaglass-harbor', name: 'Seaglass Harbor', basic: ['Lumber'], boss: ['Crackling War Club', "Old Gladiator's Legacy", "Shatigon's Hammer"] },
   { id: 'watchers', name: "Watcher's", basic: ['Additive'], boss: ['Shattered Armor Plate', 'Vanguard Armor'] },
-  { id: 'waterdrift', name: 'Waterdrift', basic: ['Ingot'], boss: ['Wind Blade Claw', 'Howling Sandstorm'] },
+  { id: 'waterdrift', name: 'Waterdrift', basic: ['Ingot'], boss: ['Wind Blade Claws', 'Howling Sandstorm'] },
   { id: 'jubilant-village', name: 'Jubilant Village', basic: ['Leather'], boss: ['Undying Flame', "Gyldenlord's Curse", 'Constellation Horn'] },
   { id: 'stargazer', name: 'Stargazer', basic: ['Textile'], boss: ['Frostbound Serpent Scale', 'Foundations of Elven Meditation', 'Dark Sorcery Catalyst'] },
   { id: 'shadowpath-temple', name: 'Shadowpath Temple', basic: ['Archeum', 'Stone'], boss: ['Tainted Flesh', 'Brutal Nightmare'] },
