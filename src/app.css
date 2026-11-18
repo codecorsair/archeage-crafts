@@ -44,6 +44,7 @@ legend { padding: 0 5px; color: var(--muted); font-size: 12px; }
 .rail-plan-title { display: grid; gap: 12px; }
 .mobile-setup-toggle { display: none; }
 .rail-section > button, .setup-links button { width: 100%; }
+.plan-summary .share-plan { grid-column: 1 / -1; }
 .setup-links { display: grid; gap: 8px; padding-top: 6px; }
 .rail-note, .note { color: var(--muted); font-size: 12px; line-height: 1.7; }
 .rail-note { padding: 0 4px; font-size: 11px; }

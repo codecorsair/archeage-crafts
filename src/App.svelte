@@ -20,6 +20,7 @@
   import { LEGACY_STATE_KEYS, parseWorkbenchState, WORKBENCH_STATE_KEY } from './lib/workbench-state';
   import { planTrades, type TradeCatalog, type TradePlan } from './lib/trading';
   import { buildFineArcheumPreset } from './lib/trade-presets';
+  import { createShareUrl, readSharedPlan } from './lib/share-plan';
   import type { Catalog, Inventory } from './lib/types';
 
   const catalog: Catalog = data;
@@ -40,8 +41,13 @@
   let drawer = $state<'target' | 'inventory' | 'master' | 'trades' | null>(null);
   let mobileSetupOpen = $state(false);
   let tradeMode = $state<'owned' | 'dropped' | 'all'>('all');
-  type Navigation = { kind: 'new' } | { kind: 'switch'; id: string };
-  type Modal = { kind: 'navigate'; next: Navigation } | { kind: 'delete' } | { kind: 'remove-trades' } | { kind: 'rebuild'; plan: TradePlan; data: TradeCatalog; candidate: CraftPlan } | { kind: 'preset'; candidate: CraftPlan } | { kind: 'reset-progress'; candidate: CraftPlan };
+  let sharedPreview = $state(false);
+  let shareUrl = $state('');
+  let shareMessage = $state('');
+  let shareError = $state('');
+  let shareRequest = 0;
+  type Navigation = { kind: 'new' } | { kind: 'switch'; id: string } | { kind: 'shared'; plan: CraftPlan };
+  type Modal = { kind: 'share' } | { kind: 'navigate'; next: Navigation } | { kind: 'delete' } | { kind: 'remove-trades' } | { kind: 'rebuild'; plan: TradePlan; data: TradeCatalog; candidate: CraftPlan } | { kind: 'preset'; candidate: CraftPlan } | { kind: 'reset-progress'; candidate: CraftPlan };
   let modal = $state<Modal | null>(null);
   let progressSelection = $state<{ taskId: string; anchor: HTMLButtonElement } | null>(null);
   let dialog = $state<HTMLDialogElement | undefined>(undefined);
@@ -84,7 +90,7 @@
       storageBlocked = true;
       error = cause instanceof Error ? cause.message : 'Could not load saved plans. Stored data was kept.';
     }
-    loaded = true;
+    void openSharedLink().finally(() => loaded = true);
   });
 
   $effect(() => {
@@ -98,7 +104,10 @@
     progressSelection = null;
     drawer = null;
     error = '';
-    if (next.kind === 'switch') {
+    sharedPreview = next.kind === 'shared';
+    if (next.kind === 'shared') {
+      draft = next.plan;
+    } else if (next.kind === 'switch') {
       const plan = plans.find(entry => entry.id === next.id);
       if (plan) draft = structuredClone($state.snapshot(plan));
     } else {
@@ -112,6 +121,42 @@
     if (next.kind === 'switch' && next.id === draft?.id) return;
     if (dirty) modal = { kind: 'navigate', next };
     else navigate(next);
+  }
+
+  async function openSharedLink() {
+    const request = ++shareRequest;
+    const hash = window.location.hash;
+    try {
+      const plan = await readSharedPlan(catalog, hash);
+      if (request !== shareRequest || !plan) return;
+      requestNavigation({ kind: 'shared', plan });
+    } catch (cause) {
+      if (request === shareRequest) error = cause instanceof Error ? cause.message : 'Could not open shared plan. Ask the sender for a new link.';
+    }
+  }
+
+  async function openShare() {
+    if (!draft) return;
+    const plan = $state.snapshot(draft);
+    shareUrl = '';
+    shareMessage = '';
+    shareError = '';
+    modal = { kind: 'share' };
+    try {
+      const url = await createShareUrl(catalog, plan, window.location.href);
+      if (modal?.kind === 'share') shareUrl = url;
+    } catch (cause) {
+      if (modal?.kind === 'share') shareError = cause instanceof Error ? cause.message : 'Could not create a share link.';
+    }
+  }
+
+  async function copyShareLink() {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      shareMessage = 'Link copied.';
+    } catch {
+      shareMessage = 'Select the link above and copy it manually.';
+    }
   }
 
   function changeSavedPlan(event: Event) {
@@ -211,6 +256,7 @@
       : [...plans, candidate];
     if (!persist(next)) return false;
     draft = structuredClone($state.snapshot(plans.find(plan => plan.id === candidate.id)!));
+    sharedPreview = false;
     return true;
   }
 
@@ -304,7 +350,7 @@
   }
 </script>
 
-<svelte:window onbeforeunload={event => { if (dirty) { event.preventDefault(); event.returnValue = ''; } }} />
+<svelte:window onhashchange={() => { if (loaded) void openSharedLink(); }} onbeforeunload={event => { if (dirty) { event.preventDefault(); event.returnValue = ''; } }} />
 
 <header class="site-header">
   <span class="brand">ArcheAge Craft<small>Crafting plans</small></span>
@@ -316,18 +362,19 @@
     <section class="rail-section" data-guide="plans">
       <h2>Plans</h2>
       <label for="saved-plan">Saved plans</label>
-      <select id="saved-plan" value={draft?.id ?? ''} onchange={changeSavedPlan}>
+      <select id="saved-plan" value={draft?.id ?? ''} onchange={changeSavedPlan} disabled={!loaded}>
         <option value="">Choose a plan</option>
         {#if draft && !saved}<option value={draft.id}>Unsaved: {draft.name}</option>{/if}
         {#each plans as plan (plan.id)}<option value={plan.id}>{plan.name}</option>{/each}
       </select>
-      <button type="button" onclick={() => requestNavigation({ kind: 'new' })}>New plan</button>
+      <button type="button" onclick={() => requestNavigation({ kind: 'new' })} disabled={!loaded}>New plan</button>
     </section>
     {#if draft}
       <section class="rail-section plan-summary">
         <div class="rail-plan-title"><div class="eyebrow">Current plan</div><h2>{draft.name}</h2><p class="note">{format.format(draft.quantity)} {target?.name ?? 'items'}</p></div>
         <span class="save-status" role="status">{dirty ? 'Unsaved changes' : 'Saved'}</span>
-        <button class="primary" data-guide="save" type="button" onclick={() => save()} disabled={!dirty || !loaded}>Save changes</button>
+        <button class="primary" data-guide="save" type="button" onclick={() => save()} disabled={!dirty || !loaded}>{sharedPreview ? 'Save a copy' : 'Save changes'}</button>
+        <button class="share-plan" type="button" onclick={openShare} disabled={!loaded}>Share plan</button>
         <button class="mobile-setup-toggle" data-guide="mobile-settings" type="button" aria-expanded={mobileSetupOpen} onclick={() => mobileSetupOpen = !mobileSetupOpen}>Plan settings</button>
         <nav class="setup-links" class:mobile-collapsed={!mobileSetupOpen} aria-label="Plan configuration">
           <button type="button" onclick={() => drawer = 'target'}>Target & name</button>
@@ -354,6 +401,7 @@
         <p class="note">Starts with empty inventory and all unlocks off.</p>
       </section>
     {:else}
+      {#if sharedPreview}<p class="notice" role="status">Shared plan preview. Progress is reset and trade runs are rebuilt without delivery bonuses. Save a copy to keep it on this device.</p>{/if}
       <header class="plan-header">
         <ItemIcon icon={items.get(target?.itemId ?? '')?.icon} grade={items.get(target?.itemId ?? '')?.grade} />
         <div><h1>{target?.name ?? draft.name}</h1><p>{format.format(draft.quantity)} to make · {draft.name}</p></div>
@@ -443,7 +491,16 @@
 </dialog>
 
 <dialog bind:this={dialog} aria-labelledby="confirmation-title" oncancel={event => { event.preventDefault(); modal = null; }}>
-  {#if modal?.kind === 'navigate'}
+  {#if modal?.kind === 'share'}
+    <h2 id="confirmation-title">Share plan</h2>
+    <p>Includes your current target, inventory and settings, including unsaved edits. Anyone with the link can see them.</p>
+    <p class="note">Progress and delivery bonuses are not shared. This snapshot will not update when you edit your plan.</p>
+    {#if shareError}<p class="error" role="alert">{shareError}</p>
+    {:else if shareUrl}<label for="share-link">Plan link<input id="share-link" type="url" value={shareUrl} readonly onclick={event => event.currentTarget.select()} /></label>
+    {:else}<p role="status">Creating link…</p>{/if}
+    {#if shareMessage}<p class="note" role="status">{shareMessage}</p>{/if}
+    <div class="button-row"><button class="primary" onclick={copyShareLink} disabled={!shareUrl}>Copy link</button><button onclick={() => modal = null}>Close</button></div>
+  {:else if modal?.kind === 'navigate'}
     <h2 id="confirmation-title">Save your changes?</h2><p>This plan has unsaved changes.</p>
     {#if error}<p class="error" role="alert">{error}</p>{/if}
     <div class="button-row"><button class="primary" onclick={() => leaveDraft(true)}>Save & continue</button><button onclick={() => leaveDraft(false)}>Discard changes</button><button onclick={() => modal = null}>Cancel</button></div>
