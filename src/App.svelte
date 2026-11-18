@@ -368,7 +368,7 @@
               <ul class="item-tiles" aria-label={group.title}>
                 {#each gatheringActions.filter(action => action.kind === group.kind) as action (action.key)}
                   {@const progress = taskProgress(draft, action)}
-                  <li><MaterialTile item={items.get(action.itemId) ?? { name: action.itemId }} count={progress.remaining} complete={progress.complete} purpose={group.kind === 'farm' ? 'Pack farming remaining' : 'Gathering remaining'} expanded={progressSelection?.taskId === action.progressKey} onProgress={anchor => openProgress(action.progressKey, anchor)} /></li>
+                  <li><MaterialTile item={items.get(action.itemId) ?? { name: action.itemId }} count={progress.remaining} complete={progress.complete} purpose={group.kind === 'farm' ? 'Farming remaining' : 'Gathering remaining'} expanded={progressSelection?.taskId === action.progressKey} onProgress={anchor => openProgress(action.progressKey, anchor)} /></li>
                 {/each}
               </ul>
             </div>
