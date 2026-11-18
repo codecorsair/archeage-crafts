@@ -46,6 +46,7 @@
   let shareMessage = $state('');
   let shareError = $state('');
   let shareRequest = 0;
+  let shareDialogRequest = 0;
   type Navigation = { kind: 'new' } | { kind: 'switch'; id: string } | { kind: 'shared'; plan: CraftPlan };
   type Modal = { kind: 'share' } | { kind: 'navigate'; next: Navigation } | { kind: 'delete' } | { kind: 'remove-trades' } | { kind: 'rebuild'; plan: TradePlan; data: TradeCatalog; candidate: CraftPlan } | { kind: 'preset'; candidate: CraftPlan } | { kind: 'reset-progress'; candidate: CraftPlan };
   let modal = $state<Modal | null>(null);
@@ -90,7 +91,7 @@
       storageBlocked = true;
       error = cause instanceof Error ? cause.message : 'Could not load saved plans. Stored data was kept.';
     }
-    void openSharedLink().finally(() => loaded = true);
+    void openSharedLink();
   });
 
   $effect(() => {
@@ -132,11 +133,14 @@
       requestNavigation({ kind: 'shared', plan });
     } catch (cause) {
       if (request === shareRequest) error = cause instanceof Error ? cause.message : 'Could not open shared plan. Ask the sender for a new link.';
+    } finally {
+      if (request === shareRequest) loaded = true;
     }
   }
 
   async function openShare() {
     if (!draft) return;
+    const request = ++shareDialogRequest;
     const plan = $state.snapshot(draft);
     shareUrl = '';
     shareMessage = '';
@@ -144,18 +148,19 @@
     modal = { kind: 'share' };
     try {
       const url = await createShareUrl(catalog, plan, window.location.href);
-      if (modal?.kind === 'share') shareUrl = url;
+      if (request === shareDialogRequest && modal?.kind === 'share') shareUrl = url;
     } catch (cause) {
-      if (modal?.kind === 'share') shareError = cause instanceof Error ? cause.message : 'Could not create a share link.';
+      if (request === shareDialogRequest && modal?.kind === 'share') shareError = cause instanceof Error ? cause.message : 'Could not create a share link.';
     }
   }
 
   async function copyShareLink() {
+    const request = shareDialogRequest;
     try {
       await navigator.clipboard.writeText(shareUrl);
-      shareMessage = 'Link copied.';
+      if (request === shareDialogRequest && modal?.kind === 'share') shareMessage = 'Link copied.';
     } catch {
-      shareMessage = 'Select the link above and copy it manually.';
+      if (request === shareDialogRequest && modal?.kind === 'share') shareMessage = 'Select the link above and copy it manually.';
     }
   }
 
@@ -350,7 +355,7 @@
   }
 </script>
 
-<svelte:window onhashchange={() => { if (loaded) void openSharedLink(); }} onbeforeunload={event => { if (dirty) { event.preventDefault(); event.returnValue = ''; } }} />
+<svelte:window onhashchange={() => void openSharedLink()} onbeforeunload={event => { if (dirty) { event.preventDefault(); event.returnValue = ''; } }} />
 
 <header class="site-header">
   <span class="brand">ArcheAge Craft<small>Crafting plans</small></span>
