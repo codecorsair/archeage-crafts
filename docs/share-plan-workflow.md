@@ -30,4 +30,10 @@ Full verification passed: bun test (149 tests, 5,295 assertions), bun run check 
 
 Controlled browser regression checks used native stream gates injected by /tmp/archeage-share-race-init.js in isolated browser session share-races, with otherwise unchanged UI/modules. Startup: block A's initial decompression, change hash to B while loading, verify B also starts, release A and assert loading remains with no draft, then release B and assert Race B/quantity 2 matches the URL. Dialog: save Race A and Race B separately, block A's share compression, close and switch to B, begin B sharing, release B and decode its link to assert Race B/quantity 2, then release A and assert B's link remains identical. Both checks passed. Test-only dev server stopped. Native deflate bytes differed between Bun and Chromium, so cross-runtime assertions compare decoded snapshot content, not compressed-byte equality.
 
-Targeted re-review and local integration pending.
+Final product 895b84eaa060c185b58cbb3edce4636944ade536 passed all 149 tests (5,295 assertions), Svelte check, production build and diff-check after the race fixes. These results remain valid at final verification: no product changes occurred during review, and the reviewed tree/fingerprint were rechecked before integration.
+
+Independent reviewer share-plan-review (child d41415a9, session 01a1ec0b-89b8-74ba-a940-3e20349c5968) approved specification and repository standards in targeted follow-up. Both P2 findings resolved; no material findings remain. Reviewer independently passed eight codec tests/55 assertions and controlled-promise race checks covering stale success/errors, startup ownership and clipboard outcomes. Before/after state remained clean and unchanged.
+
+Exact reviewed diff: git diff --binary --full-index --find-renames 0ad0604a83374b8153015b77920735a53a52e602...895b84eaa060c185b58cbb3edce4636944ade536 -- . SHA-256: 8a9be3314fb78cd6c0399ed74140a97388db65b32b288f2f3c7ba5659b37d3c8. Product tree: 530a1f3892fe08d73f038073c9f6ed1619bf88da.
+
+Fetched origin/main and clean local main both remained at the original integration base. Local integration uses a fast-forward; the closure commit changes this evidence record only. No feature push or deployment. Remove only this workflow's clean worktree and branch after proving reachability.
