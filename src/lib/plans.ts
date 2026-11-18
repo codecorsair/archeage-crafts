@@ -147,8 +147,8 @@ function prefixCosts(runs: TradePlan['runs'], packs: TradeCatalog['packs']): Map
 }
 function visibleTasks(catalog: Catalog, plan: CraftPlan): ProgressTask[] {
   const stock = projectPlanStock(plan);
-  const result = calculate(catalog, plan.recipeId, plan.quantity, stock.craft, { master: plan.settings.master, masterInventory: stock.owned });
-  return [...gatheringPlan(result, plan.trade && !plan.trade.stale ? plan.trade.plan : null), ...craftingPlan(catalog, result)];
+  const result = calculate(catalog, plan.recipeId, plan.quantity, stock.craft, { master: plan.settings.master, masterInventory: stock.owned, farmableItems: new Set(plan.settings.farmable) });
+  return [...gatheringPlan(result, plan.trade && !plan.trade.stale ? plan.trade.plan : null, new Set(plan.settings.farmable)), ...craftingPlan(catalog, result)];
 }
 export type ProgressTask = GatheringPlanRow | CraftingPlanRow;
 

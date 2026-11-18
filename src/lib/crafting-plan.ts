@@ -10,13 +10,23 @@ export type GatheringPlanRow = {
   count: number;
 };
 
-/** Keep pack farming separate from crafting shortages, even for the same material. */
-export function gatheringPlan(result: Pick<Calculation, 'raw'>, trade: Pick<TradePlan, 'inputs'> | null = null): GatheringPlanRow[] {
+/** Combine selected direct farming with pack costs; keep other shortages separate. */
+export function gatheringPlan(result: Pick<Calculation, 'raw'>, trade: Pick<TradePlan, 'inputs'> | null = null, farmable: ReadonlySet<string> = new Set()): GatheringPlanRow[] {
   const actions: Omit<GatheringPlanRow, 'key' | 'progressKey'>[] = [
     ...(trade?.inputs ?? []).filter(input => input.farm > 0).map(input => ({ kind: 'farm' as const, itemId: input.itemId, count: input.farm })),
     ...result.raw.filter(need => need.missing > 0).map(need => ({ kind: 'gather' as const, itemId: need.itemId, count: need.missing })),
   ];
-  return actions.map(action => ({ ...action, progressKey: JSON.stringify([action.kind, action.itemId]), key: JSON.stringify([action.kind, action.itemId, action.count]) }));
+  for (const action of actions) {
+    if (farmable.has(action.itemId)) action.kind = 'farm';
+  }
+  const combined = new Map<string, typeof actions[number]>();
+  for (const action of actions) {
+    const key = JSON.stringify([action.kind, action.itemId]);
+    const existing = combined.get(key);
+    if (existing) existing.count += action.count;
+    else combined.set(key, { ...action });
+  }
+  return [...combined.values()].map(action => ({ ...action, progressKey: JSON.stringify([action.kind, action.itemId]), key: JSON.stringify([action.kind, action.itemId, action.count]) }));
 }
 
 export type CraftingPlanRow = {

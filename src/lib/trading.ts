@@ -122,7 +122,7 @@ export function planTrades(
     if (input.owned > available) throw new Error('Protected costs exceed snapshot');
     owned.set(input.itemId, available - input.owned);
   }
-  let calculation = calculate(catalog, recipeId, quantity, inventory, { master: options.master, externalItems: external });
+  let calculation = calculate(catalog, recipeId, quantity, inventory, { master: options.master, externalItems: external, farmableItems: farmable });
   let stock = new Map<string, number>();
   let remaining = new Map<string, number>();
   const packsByOrigin = new Map<string, TradePack[]>();
@@ -142,7 +142,7 @@ export function planTrades(
   const refresh = (): void => {
     const craftStock: Inventory = Object.fromEntries(owned);
     for (const [itemId, count] of rewards) craftStock[itemId] = sum(craftStock[itemId] ?? 0, count);
-    calculation = calculate(catalog, recipeId, quantity, craftStock, { master: options.master, externalItems: external, masterInventory: Object.fromEntries(owned) });
+    calculation = calculate(catalog, recipeId, quantity, craftStock, { master: options.master, externalItems: external, farmableItems: farmable, masterInventory: Object.fromEntries(owned) });
     stock = new Map(owned);
     for (const need of [...calculation.raw, ...calculation.crafted]) {
       stock.set(need.itemId, Math.max(0, (owned.get(need.itemId) ?? 0) - need.required));
@@ -169,7 +169,7 @@ export function planTrades(
             const reward = delivery.rewards[channel];
             if (reward.kind !== 'material') continue;
             const needed = candidateRemaining.get(reward.itemId) ?? 0;
-            if (!needed || pack.materials.some((material) => !farmable.has(material.itemId) && (candidateStock.get(material.itemId) ?? 0) < material.count)) continue;
+            if (!needed || farmable.has(reward.itemId) || pack.materials.some((material) => !farmable.has(material.itemId) && (candidateStock.get(material.itemId) ?? 0) < material.count)) continue;
             const benefit = Math.min(needed, reward.count);
             if (!selected || benefit > selected.useful) selected = { pack, destinationId: delivery.destinationId, itemId: reward.itemId, count: reward.count, useful: benefit };
           }

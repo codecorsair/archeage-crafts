@@ -22,6 +22,7 @@ export type Calculation = { raw: Requirement[]; crafted: Requirement[]; steps: C
 export type CalculationOptions = {
   master?: Readonly<MasterProfessions>;
   externalItems?: ReadonlySet<string>;
+  farmableItems?: ReadonlySet<string>;
   /** Internal trade ceiling: acquired rewards are not owned Master inputs. */
   masterInventory?: Readonly<Inventory>;
 };
@@ -54,8 +55,9 @@ export function calculate(catalog: Catalog, recipeId: string, quantity: number, 
     if (visiting.has(itemId)) throw new Error(`Crafting recipe cycle detected: ${itemId}`);
     if (visited.has(itemId)) return;
     visiting.add(itemId);
-    const ordinary = itemId !== root && options.externalItems?.has(itemId) ? undefined : recipes.get(itemId);
-    for (const recipe of [ordinary, masters.get(itemId)]) {
+    const farmed = itemId !== root && options.farmableItems?.has(itemId);
+    const ordinary = itemId !== root && (farmed || options.externalItems?.has(itemId)) ? undefined : recipes.get(itemId);
+    for (const recipe of [ordinary, farmed ? undefined : masters.get(itemId)]) {
       if (!recipe) continue;
       safe(recipe.output, `Recipe ${recipe.id} output`, 1);
       if (!Array.isArray(recipe.materials) || !recipe.materials.length) throw new Error(`Ingredient data unavailable for ${recipe.name}`);
@@ -83,7 +85,8 @@ export function calculate(catalog: Catalog, recipeId: string, quantity: number, 
       const used = Math.min(demand, inventory[itemId] ?? 0);
       const missing = demand - used;
       const recipe = recipes.get(itemId);
-      const external = itemId !== root && options.externalItems?.has(itemId);
+      const farmed = itemId !== root && options.farmableItems?.has(itemId);
+      const external = itemId !== root && (farmed || options.externalItems?.has(itemId));
       const methods: CraftMethod[] = [];
       const append = (methodRecipe: Recipe, batches: number, isMaster: boolean): void => {
         if (!batches) return;
@@ -95,7 +98,7 @@ export function calculate(catalog: Catalog, recipeId: string, quantity: number, 
         }
       };
       let residual = missing;
-      const master = enableMaster ? masters.get(itemId) : undefined;
+      const master = enableMaster && !farmed ? masters.get(itemId) : undefined;
       if (master && residual) {
         const available = Math.min(...master.materials.map((material) => Math.floor((spare.get(material.itemId) ?? 0) / material.count)));
         const batches = Math.min(available, Math.ceil(residual / master.output));

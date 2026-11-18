@@ -55,7 +55,7 @@
     if (!draft) return { result: null, actions: [], error: '' };
     try {
       const stock = projectPlanStock(draft);
-      const result = calculate(catalog, draft.recipeId, draft.quantity, stock.craft, { master: draft.settings.master, masterInventory: stock.owned });
+      const result = calculate(catalog, draft.recipeId, draft.quantity, stock.craft, { master: draft.settings.master, masterInventory: stock.owned, farmableItems: new Set(draft.settings.farmable) });
       return { result, actions: craftingPlan(catalog, result), error: '' };
     } catch (cause) {
       return { result: null, actions: [], error: cause instanceof Error ? cause.message : 'Could not calculate this plan.' };
@@ -63,7 +63,7 @@
   });
   const intermediateActions = $derived(calculation.actions.filter(action => action.itemId !== target?.itemId));
   const finalActions = $derived(calculation.actions.filter(action => action.itemId === target?.itemId));
-  const gatheringActions = $derived(calculation.result ? gatheringPlan(calculation.result, currentTrade?.plan ?? null) : []);
+  const gatheringActions = $derived(calculation.result ? gatheringPlan(calculation.result, currentTrade?.plan ?? null, new Set(draft?.settings.farmable)) : []);
   const activeProgressTask = $derived([...gatheringActions, ...calculation.actions].find(task => task.progressKey === progressSelection?.taskId));
   const progressAction = $derived<ProgressAction | null>(draft && activeProgressTask && progressSelection ? {
     name: items.get(activeProgressTask.itemId)?.name ?? activeProgressTask.itemId,
@@ -72,7 +72,7 @@
     kind: 'count' in activeProgressTask ? 'gather' : 'craft',
     anchor: progressSelection.anchor,
   } : null);
-  const gatheringGroups = [{ kind: 'farm', title: 'Farm for trade packs' }, { kind: 'gather', title: 'Gather for crafting' }] as const;
+  const gatheringGroups = [{ kind: 'farm', title: 'Farm materials' }, { kind: 'gather', title: 'Gather for crafting' }] as const;
 
   onMount(() => {
     try {
